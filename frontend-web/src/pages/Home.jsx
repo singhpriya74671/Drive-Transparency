@@ -312,9 +312,9 @@ export default function Home() {
             )}
             <div className="space-y-3">
               {[
-                { label: "Health Score", value: `${healthScore}/100`, color: healthScore >= 75 ? SUCCESS : healthScore >= 50 ? WARNING : DANGER },
-                { label: "Next Service",  value: report ? (report.components.find(c => c.urgency !== "good" && c.predicted_service_window_days) ? `${report.components.filter(c => c.urgency !== "good").sort((a,b) => (a.predicted_service_window_days??999)-(b.predicted_service_window_days??999))[0]?.predicted_service_window_days ?? 30} Days` : "Scheduled") : "30 Days", color: WARNING },
-                { label: "AI Risk Level", value: report ? (report.overall_status === "critical" ? "High" : report.overall_status === "warning" ? "Medium" : "Low") : "Low", color: report?.overall_status === "critical" ? DANGER : report?.overall_status === "warning" ? WARNING : SUCCESS },
+                { label: "Health Score", value: report ? `${healthScore}/100` : "--", color: report ? (healthScore >= 75 ? SUCCESS : healthScore >= 50 ? WARNING : DANGER) : MUTED },
+                { label: "Next Service",  value: report ? (report.components.filter(c => c.urgency !== "good").sort((a,b) => (a.predicted_service_window_days??999)-(b.predicted_service_window_days??999))[0]?.predicted_service_window_days ? `${report.components.filter(c => c.urgency !== "good").sort((a,b) => (a.predicted_service_window_days??999)-(b.predicted_service_window_days??999))[0].predicted_service_window_days} Days` : "Scheduled") : "--", color: report ? WARNING : MUTED },
+                { label: "AI Risk Level", value: report ? (report.overall_status === "critical" ? "High" : report.overall_status === "warning" ? "Medium" : "Low") : "--", color: report ? (report.overall_status === "critical" ? DANGER : report.overall_status === "warning" ? WARNING : SUCCESS) : MUTED },
               ].map(({ label, value, color }) => (
                 <div key={label} className="flex items-center justify-between p-2.5 rounded-xl" style={{ background: SURFACE }}>
                   <span className="text-xs" style={{ color: MUTED }}>{label}</span>
@@ -399,10 +399,10 @@ export default function Home() {
       <section className="max-w-5xl mx-auto px-6 -mt-10 relative z-10">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { icon: "❤️", label: "Health Score",   value: `${healthScore}/100`, color: healthScore >= 75 ? SUCCESS : WARNING },
-            { icon: "🔧", label: "Services Due",   value: `${servicesDue} Due`, color: servicesDue > 0 ? WARNING : SUCCESS },
-            { icon: "📊", label: "Mileage",         value: `${(mileage/1000).toFixed(0)}k km`,   color: PRIMARY },
-            { icon: "💰", label: "Cost Estimate",   value: `₹${costEst.toLocaleString()}`,        color: PRIMARY },
+            { icon: "❤️", label: "Health Score",  value: report ? `${healthScore}/100` : "--",           color: report ? (healthScore >= 75 ? SUCCESS : WARNING) : MUTED },
+            { icon: "🔧", label: "Services Due",  value: report ? `${servicesDue} Due` : "--",           color: report ? (servicesDue > 0 ? WARNING : SUCCESS)  : MUTED },
+            { icon: "📊", label: "Mileage",        value: selectedVehicle ? `${(mileage/1000).toFixed(0)}k km` : "--", color: selectedVehicle ? PRIMARY : MUTED },
+            { icon: "💰", label: "Cost Estimate",  value: report && costEst > 0 ? `₹${costEst.toLocaleString()}` : "--", color: report && costEst > 0 ? PRIMARY : MUTED },
           ].map(({ icon, label, value, color }, i) => (
             <motion.div
               key={label}
