@@ -7,6 +7,17 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Attach JWT token to every request
+api.interceptors.request.use((config) => {
+  try {
+    const user = JSON.parse(localStorage.getItem("dt_user"));
+    if (user?.access_token) {
+      config.headers.Authorization = `Bearer ${user.access_token}`;
+    }
+  } catch {}
+  return config;
+});
+
 export const vehicleAPI = {
   create:  (data)         => api.post("/api/vehicles/", data),
   list:    ()             => api.get("/api/vehicles/"),
