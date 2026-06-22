@@ -5,11 +5,14 @@ from datetime import datetime
 
 class ComponentHealth(BaseModel):
     component: str
+    label: Optional[str] = None
     health_score: float       # 0-100
     urgency: str              # critical / warning / good
     explanation: str
     estimated_cost_min: float
     estimated_cost_max: float
+    maintenance_probability: Optional[float] = None
+    predicted_service_window_days: Optional[int] = None
     shap_factors: Optional[List[dict]] = None
 
 

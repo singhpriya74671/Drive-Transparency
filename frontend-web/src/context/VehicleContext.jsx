@@ -40,8 +40,9 @@ export function VehicleProvider({ children }) {
       const { data } = await maintenanceAPI.analyze(vehicleId);
       setReport(data);
       return data;
-    } catch {
+    } catch (err) {
       toast.error("Analysis failed. Please try again.");
+      throw err;
     } finally {
       setLoading(false);
     }

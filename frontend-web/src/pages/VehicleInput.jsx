@@ -66,16 +66,16 @@ export default function VehicleInput() {
     e.preventDefault();
     try {
       const vehicle = await createVehicle(buildPayload());
-      await analyzeVehicle(vehicle.id);
-      navigate("/dashboard");
+      const result  = await analyzeVehicle(vehicle.id);
+      if (result) navigate("/dashboard");
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      // individual toasts already shown by createVehicle / analyzeVehicle
     }
   };
 
   const handleQuick = async () => {
-    await analyzeQuick(buildPayload());
-    navigate("/dashboard");
+    const result = await analyzeQuick(buildPayload());
+    if (result) navigate("/dashboard");
   };
 
   const voltageColor = form.battery_voltage < 11.8 ? "#CF5C5C" : form.battery_voltage < 12.2 ? "#D4935E" : "#4CAF7D";

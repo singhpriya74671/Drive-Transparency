@@ -30,6 +30,12 @@ def analyze_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
         "has_vibration": vehicle.has_vibration,
         "has_reduced_mileage": vehicle.has_reduced_mileage,
         "has_braking_issues": vehicle.has_braking_issues,
+        # OBD-II fields
+        "battery_voltage": vehicle.battery_voltage,
+        "engine_temp_c": vehicle.engine_temp_c,
+        "has_dtc": vehicle.has_dtc,
+        "avg_speed_kmh": vehicle.avg_speed_kmh,
+        "engine_runtime_hours": vehicle.engine_runtime_hours,
     }
 
     components_raw = predict_maintenance(vehicle_dict)
