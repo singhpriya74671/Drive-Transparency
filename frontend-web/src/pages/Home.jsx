@@ -159,12 +159,12 @@ export default function Home() {
   const [auraLoading, setAuraLoading] = useState(false);
 
   // Derive real data from report when available
-  const healthScore  = report ? Math.round(report.overall_health_score) : 87;
-  const mileage      = selectedVehicle?.mileage_km || 45000;
-  const servicesDue  = report ? report.components.filter(c => c.urgency !== "good").length : 3;
+  const healthScore  = report ? Math.round(report.overall_health_score) : 0;
+  const mileage      = selectedVehicle?.mileage_km || 0;
+  const servicesDue  = report ? report.components.filter(c => c.urgency !== "good").length : 0;
   const costEst      = report
     ? report.components.reduce((s, c) => s + (c.urgency !== "good" ? c.estimated_cost_min : 0), 0)
-    : 3500;
+    : 0;
   const recommendations = report
     ? report.components.slice().sort((a, b) => (a.urgency === "critical" ? -1 : a.urgency === "warning" ? 0 : 1)).slice(0, 3)
     : MOCK_RECOMMENDATIONS;
