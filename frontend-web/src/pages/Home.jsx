@@ -155,6 +155,7 @@ export default function Home() {
   const [checklist, setChecklist] = useState(MOCK_CHECKLIST);
   const [auraInput, setAuraInput] = useState("");
   const [auraChat,  setAuraChat]  = useState([]);
+  const [carBrand,  setCarBrand]  = useState("");
   const [auraLoading, setAuraLoading] = useState(false);
 
   // Derive real data from report when available
@@ -514,7 +515,7 @@ export default function Home() {
               <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: "#4CAF7D18" }}>🏢</div>
               <div>
                 <p className="font-bold text-sm" style={{ color: TEXT }}>Authorized Service Centers</p>
-                <p className="text-xs mt-0.5" style={{ color: "#4CAF7D" }}>Official brand centers</p>
+                <p className="text-xs mt-0.5" style={{ color: "#4CAF7D" }}>Official brand-only centers</p>
               </div>
             </div>
             <ul className="space-y-1.5">
@@ -524,19 +525,38 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+            {/* Brand selector */}
+            <div>
+              <p className="text-xs mb-1.5" style={{ color: MUTED }}>Select your car brand:</p>
+              <select
+                value={carBrand}
+                onChange={e => setCarBrand(e.target.value)}
+                style={{
+                  width: "100%", background: SURFACE, border: `1px solid ${carBrand ? "#4CAF7D" : BORDER}`,
+                  borderRadius: 10, padding: "8px 12px", color: carBrand ? TEXT : MUTED,
+                  fontSize: "0.85rem", outline: "none", fontFamily: "inherit",
+                }}
+              >
+                <option value="">-- Choose brand --</option>
+                {["Maruti Suzuki","Hyundai","Tata","Honda","Toyota","Mahindra","Kia","MG","Renault","Nissan","Volkswagen","Skoda","Ford","Jeep","BMW","Mercedes-Benz","Audi","Volvo","Fiat","Mitsubishi"].map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={() => {
+                const q = carBrand ? `${carBrand} authorized service center` : "authorized car service center";
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
-                    ({ coords }) => window.open(`https://www.google.com/maps/search/authorized+car+service+center/@${coords.latitude},${coords.longitude},14z`, "_blank"),
-                    () => window.open("https://www.google.com/maps/search/authorized+car+service+center+near+me", "_blank")
+                    ({ coords }) => window.open(`https://www.google.com/maps/search/${encodeURIComponent(q)}/@${coords.latitude},${coords.longitude},14z`, "_blank"),
+                    () => window.open(`https://www.google.com/maps/search/${encodeURIComponent(q + " near me")}`, "_blank")
                   );
-                } else window.open("https://www.google.com/maps/search/authorized+car+service+center+near+me", "_blank");
+                } else window.open(`https://www.google.com/maps/search/${encodeURIComponent(q + " near me")}`, "_blank");
               }}
               className="w-full py-2.5 rounded-xl text-sm font-semibold mt-auto"
-              style={{ background: "#4CAF7D", color: "#1C1C1C" }}
+              style={{ background: "#4CAF7D", color: "#1C1C1C", opacity: carBrand ? 1 : 0.6 }}
             >
-              📍 Find Authorized Centers
+              📍 {carBrand ? `Find ${carBrand} Centers` : "Select Brand First"}
             </button>
           </motion.div>
 
