@@ -157,6 +157,11 @@ EXPLANATIONS = {
 def _days_since(dt) -> float:
     if dt is None:
         return 999.0
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return 999.0
     now = datetime.now(timezone.utc)
     aware = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     return max((now - aware).days, 0)
