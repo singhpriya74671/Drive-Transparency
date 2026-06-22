@@ -152,10 +152,18 @@ export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [checklist, setChecklist] = useState(MOCK_CHECKLIST);
-  const [auraInput, setAuraInput] = useState("");
-  const [auraChat,  setAuraChat]  = useState([]);
-  const [carBrand,  setCarBrand]  = useState("");
+  const [checklist,    setChecklist]    = useState(MOCK_CHECKLIST);
+  const [newItem,      setNewItem]      = useState("");
+  const [auraInput,    setAuraInput]    = useState("");
+  const [auraChat,     setAuraChat]     = useState([]);
+  const [carBrand,     setCarBrand]     = useState("");
+
+  const addChecklistItem = () => {
+    const label = newItem.trim();
+    if (!label) return;
+    setChecklist(p => [...p, { label, done: false }]);
+    setNewItem("");
+  };
   const [auraLoading, setAuraLoading] = useState(false);
 
   // Derive real data from report when available
@@ -551,41 +559,56 @@ export default function Home() {
       {/* ── MAINTENANCE CHECKLIST ─────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pb-10">
         <div className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: MUTED }}>Maintenance Checklist</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Maintenance Checklist</p>
+            <p className="text-xs" style={{ color: MUTED }}>
+              {checklist.filter(c => c.done).length} / {checklist.length} completed
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {checklist.map((item, i) => (
-              <label
-                key={i}
-                className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                style={{
-                  background: item.done ? "#4CAF7D12" : SURFACE,
-                  border:     `1px solid ${item.done ? SUCCESS + "44" : BORDER}`,
-                }}
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
+                style={{ background: item.done ? "#4CAF7D12" : SURFACE, border: `1px solid ${item.done ? SUCCESS + "44" : BORDER}` }}
+                onClick={() => setChecklist(p => p.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
               >
-                <input
-                  type="checkbox"
-                  checked={item.done}
-                  onChange={() => setChecklist(p => p.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
-                  className="hidden"
-                />
-                <div
-                  className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: item.done ? SUCCESS : "transparent",
-                    border:     `2px solid ${item.done ? SUCCESS : MUTED}`,
-                  }}
-                >
+                <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                  style={{ background: item.done ? SUCCESS : "transparent", border: `2px solid ${item.done ? SUCCESS : MUTED}` }}>
                   {item.done && <span style={{ color: "#fff", fontSize: 10 }}>✓</span>}
                 </div>
-                <span className="text-sm" style={{ color: item.done ? MUTED : TEXT, textDecoration: item.done ? "line-through" : "none" }}>
+                <span className="text-sm flex-1" style={{ color: item.done ? MUTED : TEXT, textDecoration: item.done ? "line-through" : "none" }}>
                   {item.label}
                 </span>
-              </label>
+                <button
+                  onClick={e => { e.stopPropagation(); setChecklist(p => p.filter((_, j) => j !== i)); }}
+                  className="text-xs opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0"
+                  style={{ color: MUTED }}
+                  onMouseEnter={e => e.target.style.color = DANGER}
+                  onMouseLeave={e => e.target.style.color = MUTED}
+                  title="Remove"
+                >✕</button>
+              </div>
             ))}
           </div>
-          <p className="text-xs mt-4" style={{ color: MUTED }}>
-            {checklist.filter(c => c.done).length} / {checklist.length} completed
-          </p>
+
+          {/* Add new item */}
+          <div className="flex gap-2 pt-3" style={{ borderTop: `1px solid ${BORDER}` }}>
+            <input
+              className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT }}
+              placeholder="Add new checklist item..."
+              value={newItem}
+              onChange={e => setNewItem(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addChecklistItem()}
+              onFocus={e => (e.target.style.borderColor = PRIMARY)}
+              onBlur={e  => (e.target.style.borderColor = BORDER)}
+            />
+            <button
+              onClick={addChecklistItem}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
+              style={{ background: newItem.trim() ? PRIMARY : SURFACE, color: newItem.trim() ? BG : MUTED, border: `1px solid ${BORDER}` }}
+            >+ Add</button>
+          </div>
         </div>
       </section>
 
