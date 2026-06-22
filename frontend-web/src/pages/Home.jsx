@@ -250,49 +250,141 @@ export default function Home() {
           </svg>
         </div>
 
-        {/* Hero content */}
-        <div className="relative max-w-5xl mx-auto px-6 py-20 flex flex-col justify-center" style={{ minHeight: 480 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            style={{ maxWidth: 560 }}
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-6"
+        {/* Hero content — 2-column */}
+        <div className="relative max-w-5xl mx-auto px-6 py-16 flex flex-col md:flex-row items-center gap-8 justify-between" style={{ minHeight: 420 }}>
+
+          {/* Left: text + CTAs */}
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} style={{ maxWidth: 480, flex: 1 }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-5"
               style={{ background: `${PRIMARY}18`, color: PRIMARY, border: `1px solid ${PRIMARY}33` }}>
               ◈ AI-Powered Vehicle Intelligence
             </div>
-            <h1 className="font-black leading-tight mb-4" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", color: TEXT }}>
-              Keep Your Vehicle<br />
-              <span style={{ color: PRIMARY }}>Healthy</span>
+            <h1 className="font-black leading-tight mb-3" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", color: TEXT }}>
+              Keep Your Vehicle<br /><span style={{ color: PRIMARY }}>Healthy</span>
             </h1>
-            <p className="text-base mb-3" style={{ color: MUTED }}>AI-driven maintenance insights — predict issues before breakdowns.</p>
-            <p className="text-sm mb-8" style={{ color: "#5C5652" }}>8-component health scan · Cost estimates · Service reminders</p>
-            <div className="flex flex-wrap gap-4">
-              <button
-                onClick={() => navigate(user ? "/input" : "/login")}
-                className="px-7 py-3.5 rounded-xl font-bold text-sm"
-                style={{ background: PRIMARY, color: BG }}
-              >
-                + Add Vehicle
+            <p className="text-sm mb-2" style={{ color: MUTED }}>AI-driven maintenance insights — predict issues before breakdowns.</p>
+            <p className="text-xs mb-7" style={{ color: "#5C5652" }}>8-component health scan · Cost estimates · Service reminders</p>
+            <div className="flex flex-wrap gap-3">
+              <button onClick={() => navigate(user ? "/input" : "/login")}
+                className="px-6 py-3 rounded-xl font-bold text-sm"
+                style={{ background: PRIMARY, color: BG }}>
+                {report ? "🔄 Re-analyze" : "+ Add Vehicle"}
               </button>
-              <button
-                onClick={() => navigate(user ? "/input" : "/login")}
-                className="px-7 py-3.5 rounded-xl font-semibold text-sm"
-                style={{ background: SURFACE, color: TEXT, border: `1px solid ${BORDER}` }}
-              >
-                🔍 Analyze Now
+              {report && (
+                <button onClick={() => navigate("/dashboard")}
+                  className="px-6 py-3 rounded-xl font-semibold text-sm"
+                  style={{ background: SURFACE, color: TEXT, border: `1px solid ${BORDER}` }}>
+                  📊 View Dashboard
+                </button>
+              )}
+              <button onClick={() => navigate("/car-mode")}
+                className="px-6 py-3 rounded-xl font-semibold text-sm"
+                style={{ background: "transparent", color: PRIMARY, border: `1px solid ${PRIMARY}44` }}>
+                🚘 Car Mode
               </button>
-              <button
-                onClick={() => navigate("/car-mode")}
-                className="px-7 py-3.5 rounded-xl font-semibold text-sm"
-                style={{ background: "transparent", color: PRIMARY, border: `1px solid ${PRIMARY}44` }}
-              >
-                🚘 OBD / Car Mode
+            </div>
+          </motion.div>
+
+          {/* Right: live vehicle status card */}
+          <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
+            className="rounded-2xl p-5 flex-shrink-0 w-full md:w-72"
+            style={{ background: "#272727CC", border: `1px solid ${BORDER}`, backdropFilter: "blur(12px)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>
+                {report ? "Vehicle Connected" : "Demo Status"}
+              </p>
+              <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                style={{ background: `${SUCCESS}18`, color: SUCCESS }}>
+                <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: SUCCESS }}></span>
+                {report ? "Live" : "Demo"}
+              </span>
+            </div>
+            {report && selectedVehicle && (
+              <p className="text-sm font-semibold mb-3" style={{ color: TEXT }}>{selectedVehicle.vehicle_model}</p>
+            )}
+            <div className="space-y-3">
+              {[
+                { label: "Health Score", value: `${healthScore}/100`, color: healthScore >= 75 ? SUCCESS : healthScore >= 50 ? WARNING : DANGER },
+                { label: "Next Service",  value: report ? (report.components.find(c => c.urgency !== "good" && c.predicted_service_window_days) ? `${report.components.filter(c => c.urgency !== "good").sort((a,b) => (a.predicted_service_window_days??999)-(b.predicted_service_window_days??999))[0]?.predicted_service_window_days ?? 30} Days` : "Scheduled") : "30 Days", color: WARNING },
+                { label: "AI Risk Level", value: report ? (report.overall_status === "critical" ? "High" : report.overall_status === "warning" ? "Medium" : "Low") : "Low", color: report?.overall_status === "critical" ? DANGER : report?.overall_status === "warning" ? WARNING : SUCCESS },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="flex items-center justify-between p-2.5 rounded-xl" style={{ background: SURFACE }}>
+                  <span className="text-xs" style={{ color: MUTED }}>{label}</span>
+                  <span className="text-sm font-bold" style={{ color }}>{value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => navigate(user ? "/input" : "/login")}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                style={{ background: PRIMARY, color: BG }}>
+                Run Diagnostic
+              </button>
+              <button onClick={() => document.getElementById("centers")?.scrollIntoView({ behavior: "smooth" })}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                style={{ background: SURFACE, color: TEXT, border: `1px solid ${BORDER}` }}>
+                Book Service
               </button>
             </div>
           </motion.div>
         </div>
+      </section>
+
+      {/* ── AI PREDICTION PANEL ───────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-6 pb-4">
+        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          className="rounded-2xl p-5" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span>🤖</span>
+              <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>AI Predictive Maintenance</p>
+            </div>
+            {report && (
+              <button onClick={() => navigate("/dashboard")}
+                className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ background: SURFACE, color: PRIMARY, border: `1px solid ${BORDER}` }}>
+                Full Report →
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {(report
+              ? report.components.filter(c => c.maintenance_probability != null).sort((a,b) => b.maintenance_probability - a.maintenance_probability).slice(0,3)
+              : [
+                  { label: "Brake Service",    maintenance_probability: 87, predicted_service_window_days: 30,  urgency: "critical" },
+                  { label: "Tyre Replacement", maintenance_probability: 91, predicted_service_window_days: 45,  urgency: "critical" },
+                  { label: "Battery Check",    maintenance_probability: 74, predicted_service_window_days: 90,  urgency: "warning"  },
+                ]
+            ).map((c, i) => {
+              const prob  = c.maintenance_probability ?? 0;
+              const days  = c.predicted_service_window_days ?? 180;
+              const color = prob >= 70 ? DANGER : prob >= 40 ? WARNING : SUCCESS;
+              const label = c.label || c.component;
+              const window = days <= 7 ? "This week" : days <= 30 ? `${days} days` : `${Math.round(days/30)} months`;
+              return (
+                <div key={i} className="rounded-xl p-4" style={{ background: `${color}10`, border: `1px solid ${color}28` }}>
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm font-semibold" style={{ color: TEXT }}>{label}</p>
+                    <span className="text-lg font-black" style={{ color }}>{prob}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: SURFACE }}>
+                    <motion.div className="h-full rounded-full"
+                      initial={{ width: 0 }} whileInView={{ width: `${prob}%` }} viewport={{ once: true }}
+                      transition={{ duration: 0.8, delay: i * 0.1 }}
+                      style={{ background: color }} />
+                  </div>
+                  <p className="text-xs" style={{ color: MUTED }}>Expected: <span style={{ color }}>{window}</span></p>
+                </div>
+              );
+            })}
+          </div>
+          {!report && (
+            <p className="text-xs text-center mt-3" style={{ color: "#555" }}>
+              Demo data shown · <span className="underline cursor-pointer" style={{ color: PRIMARY }}
+                onClick={() => navigate(user ? "/input" : "/login")}>Add your vehicle</span> to see real predictions
+            </p>
+          )}
+        </motion.div>
       </section>
 
       {/* ── STAT CARDS ────────────────────────────────────────────────────── */}
@@ -497,6 +589,75 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── AI ASSISTANT ──────────────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-6 pb-10">
+        <div className="rounded-2xl p-5 flex flex-col" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">🤖</span>
+            <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>AI Assistant — AuraBot</p>
+          </div>
+
+          {/* Suggested prompts */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[
+              "What should I service next?",
+              `Why is my health score ${healthScore}?`,
+              "How much will maintenance cost?",
+              "Check my brake condition",
+              "Explain fault code P0301",
+            ].map(prompt => (
+              <button key={prompt}
+                onClick={() => { setAuraInput(prompt); setTimeout(() => { setAuraChat(p => [...p, { role: "user", text: prompt }]); setAuraLoading(true); setTimeout(() => { setAuraChat(p => [...p, { role: "bot", text: getBotReply(prompt) }]); setAuraLoading(false); }, 800); }, 50); }}
+                className="px-3 py-1.5 rounded-full text-xs transition-all"
+                style={{ background: SURFACE, color: MUTED, border: `1px solid ${BORDER}` }}
+                onMouseEnter={e => { e.target.style.borderColor = PRIMARY; e.target.style.color = PRIMARY; }}
+                onMouseLeave={e => { e.target.style.borderColor = BORDER;  e.target.style.color = MUTED; }}
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat area */}
+          <div className="flex-1 overflow-y-auto space-y-2 mb-3" style={{ maxHeight: 180, minHeight: 60 }}>
+            {auraChat.length === 0 && (
+              <p className="text-sm italic text-center py-3" style={{ color: "#555" }}>
+                Select a prompt above or type your own question
+              </p>
+            )}
+            {auraChat.map((m, i) => (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className="px-3.5 py-2.5 rounded-2xl text-sm max-w-xs" style={{
+                  background: m.role === "user" ? PRIMARY : SURFACE,
+                  color:      m.role === "user" ? BG : TEXT,
+                  borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                }}>{m.text}</div>
+              </div>
+            ))}
+            {auraLoading && (
+              <div className="flex justify-start">
+                <div className="px-4 py-2.5 rounded-2xl text-sm" style={{ background: SURFACE, color: MUTED }}>Analysing...</div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <input className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
+              style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT }}
+              placeholder="Ask AuraBot anything about your vehicle..."
+              value={auraInput}
+              onChange={e => setAuraInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && sendAura()}
+              onFocus={e => (e.target.style.borderColor = PRIMARY)}
+              onBlur={e  => (e.target.style.borderColor = BORDER)}
+            />
+            <button onClick={sendAura}
+              className="px-4 py-2.5 rounded-xl font-semibold text-sm"
+              style={{ background: PRIMARY, color: BG }}>Ask</button>
+          </div>
+        </div>
+      </section>
+
       {/* ── NEARBY SERVICE CENTERS ────────────────────────────────────────── */}
       <section id="centers" className="max-w-5xl mx-auto px-6 pb-12">
         <div className="mb-4">
@@ -602,7 +763,7 @@ export default function Home() {
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer style={{ background: CARD, borderTop: `1px solid ${BORDER}` }}>
-        <div className="max-w-5xl mx-auto px-6 py-12">
+        <div className="max-w-5xl mx-auto px-6 py-7">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
             {[
               { title: "Product", links: [
