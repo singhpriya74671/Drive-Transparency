@@ -1,0 +1,21 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+backend/drivetransparency.db
+
+# Node
+frontend-web/node_modules/
+frontend-web/build/
+frontend-web/.env.local
+frontend-web/.env.production
+
+# Mobile
+mobile/node_modules/
+mobile/.expo/
+
+# OS
+.DS_Store
+Thumbs.db
