@@ -219,44 +219,129 @@ export default function Home() {
           WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 30%, black 60%, transparent 100%)",
         }} />
 
-        {/* Car silhouette SVG — detailed side profile */}
-        <div className="absolute pointer-events-none select-none" style={{
-          right: 0, bottom: 0, opacity: 0.18,
-        }}>
-          <svg viewBox="0 0 640 260" width="640" height="260">
-            <defs>
-              <linearGradient id="carGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={PRIMARY} stopOpacity="1" />
-                <stop offset="100%" stopColor={PRIMARY} stopOpacity="0.3" />
-              </linearGradient>
-            </defs>
-            {/* Body */}
-            <path d="M80,180 L80,200 L560,200 L560,180 L520,180 L500,150 L460,130 L380,115 L260,115 L200,130 L160,150 L120,180 Z" fill="url(#carGrad)" />
-            {/* Roof/cabin */}
-            <path d="M200,130 L220,108 L240,95 L380,95 L420,108 L460,130 Z" fill={PRIMARY} opacity="0.7" />
-            {/* Windshield */}
-            <path d="M222,128 L238,100 L290,96 L290,128 Z" fill={BG} opacity="0.5" />
-            {/* Rear window */}
-            <path d="M350,96 L415,110 L430,128 L350,128 Z" fill={BG} opacity="0.5" />
-            {/* Front wheel */}
-            <circle cx="170" cy="202" r="38" fill={PRIMARY} opacity="0.9" />
-            <circle cx="170" cy="202" r="22" fill="#1A1A1A" />
-            <circle cx="170" cy="202" r="10" fill={PRIMARY} opacity="0.6" />
-            {/* Rear wheel */}
-            <circle cx="460" cy="202" r="38" fill={PRIMARY} opacity="0.9" />
-            <circle cx="460" cy="202" r="22" fill="#1A1A1A" />
-            <circle cx="460" cy="202" r="10" fill={PRIMARY} opacity="0.6" />
-            {/* Headlight */}
-            <ellipse cx="102" cy="168" rx="18" ry="10" fill={PRIMARY} opacity="0.8" />
-            {/* Tail light */}
-            <rect x="538" y="155" width="18" height="20" rx="3" fill={DANGER} opacity="0.7" />
-            {/* Door lines */}
-            <line x1="300" y1="128" x2="298" y2="178" stroke={BG} strokeWidth="2" opacity="0.4" />
-            {/* Bumper */}
-            <rect x="76" y="185" width="30" height="10" rx="3" fill={PRIMARY} opacity="0.5" />
-            <rect x="534" y="185" width="30" height="10" rx="3" fill={PRIMARY} opacity="0.5" />
-          </svg>
-        </div>
+        {/* Animated personalised car */}
+        {(() => {
+          const mfr = (selectedVehicle?.manufacturer || "").toLowerCase();
+          const model = selectedVehicle?.vehicle_model || "";
+          // SUV brands get a taller roofline
+          const isSUV = ["mahindra","tata","jeep","ford","mg","kia","toyota","hyundai"].some(b => mfr.includes(b));
+          const accentColor = mfr.includes("maruti") || mfr.includes("suzuki") ? "#5EB8FF"
+            : mfr.includes("hyundai") ? "#4CDFB0"
+            : mfr.includes("tata")    ? "#7C5CFF"
+            : mfr.includes("honda")   ? "#FF6B6B"
+            : mfr.includes("toyota")  ? "#FFD700"
+            : mfr.includes("kia")     ? "#FF8C42"
+            : mfr.includes("mahindra")? "#FF4D6D"
+            : mfr.includes("bmw")     ? "#4C9BE8"
+            : mfr.includes("mercedes")? "#C0C0C0"
+            : mfr.includes("audi")    ? "#E8A020"
+            : PRIMARY;
+
+          // SVG paths: sedan vs SUV roof
+          const roofPath = isSUV
+            ? "M185,132 L195,100 L210,88 L400,88 L435,100 L455,132 Z"
+            : "M200,130 L220,108 L240,95 L380,95 L420,108 L460,130 Z";
+          const windshield = isSUV
+            ? "M215,130 L226,96 L285,90 L285,130 Z"
+            : "M222,128 L238,100 L290,96 L290,128 Z";
+          const rearWindow = isSUV
+            ? "M345,90 L420,100 L438,130 L345,130 Z"
+            : "M350,96 L415,110 L430,128 L350,128 Z";
+
+          return (
+            <motion.div
+              className="absolute select-none hidden md:block"
+              style={{ right: -20, bottom: 0 }}
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ scale: 1.06, y: -18, filter: `drop-shadow(0 20px 40px ${accentColor}55)` }}
+            >
+              {/* Model name tag */}
+              {model && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  className="absolute text-center"
+                  style={{ bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 8, whiteSpace: "nowrap" }}
+                >
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold"
+                    style={{
+                      background: `${accentColor}18`,
+                      border: `1px solid ${accentColor}50`,
+                      color: accentColor,
+                      backdropFilter: "blur(8px)",
+                    }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: accentColor }}></span>
+                    {model}
+                  </div>
+                </motion.div>
+              )}
+
+              <svg viewBox="0 0 640 260" width="560" height="228" style={{ filter: `drop-shadow(0 8px 24px ${accentColor}30)` }}>
+                <defs>
+                  <linearGradient id="carGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={accentColor} stopOpacity="0.85" />
+                    <stop offset="100%" stopColor={accentColor} stopOpacity="0.25" />
+                  </linearGradient>
+                  <linearGradient id="wheelGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#3a3a3a" />
+                    <stop offset="100%" stopColor="#1a1a1a" />
+                  </linearGradient>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
+                </defs>
+
+                {/* Ground shadow */}
+                <ellipse cx="315" cy="215" rx="240" ry="10" fill={accentColor} opacity="0.08" />
+
+                {/* Body */}
+                <path d="M80,180 L80,200 L560,200 L560,180 L520,180 L500,150 L460,130 L380,115 L260,115 L200,130 L160,150 L120,180 Z"
+                  fill="url(#carGrad2)" />
+                {/* Roof */}
+                <path d={roofPath} fill={accentColor} opacity="0.75" />
+                {/* Windshield */}
+                <path d={windshield} fill={BG} opacity="0.45" />
+                {/* Rear window */}
+                <path d={rearWindow} fill={BG} opacity="0.45" />
+
+                {/* Front wheel */}
+                <circle cx="170" cy="202" r="38" fill="url(#wheelGrad)" />
+                <circle cx="170" cy="202" r="28" fill="#111" />
+                <circle cx="170" cy="202" r="14" fill={accentColor} opacity="0.7" />
+                <line x1="170" y1="174" x2="170" y2="230" stroke={accentColor} strokeWidth="2" opacity="0.3" />
+                <line x1="142" y1="202" x2="198" y2="202" stroke={accentColor} strokeWidth="2" opacity="0.3" />
+
+                {/* Rear wheel */}
+                <circle cx="460" cy="202" r="38" fill="url(#wheelGrad)" />
+                <circle cx="460" cy="202" r="28" fill="#111" />
+                <circle cx="460" cy="202" r="14" fill={accentColor} opacity="0.7" />
+                <line x1="460" y1="174" x2="460" y2="230" stroke={accentColor} strokeWidth="2" opacity="0.3" />
+                <line x1="432" y1="202" x2="488" y2="202" stroke={accentColor} strokeWidth="2" opacity="0.3" />
+
+                {/* Headlight glow */}
+                <ellipse cx="102" cy="168" rx="20" ry="11" fill={accentColor} opacity="0.9" filter="url(#glow)" />
+                <ellipse cx="102" cy="168" rx="12" ry="6" fill="#fff" opacity="0.6" />
+
+                {/* Tail light */}
+                <rect x="536" y="152" width="20" height="24" rx="4" fill="#FF4444" opacity="0.85" filter="url(#glow)" />
+                <rect x="540" y="156" width="12" height="16" rx="2" fill="#ff6666" opacity="0.6" />
+
+                {/* Door line */}
+                <line x1="300" y1="128" x2="298" y2="178" stroke={accentColor} strokeWidth="1.5" opacity="0.25" />
+                {/* Window frame detail */}
+                <path d={roofPath} fill="none" stroke={accentColor} strokeWidth="1.5" opacity="0.35" />
+
+                {/* Bumpers */}
+                <rect x="74" y="184" width="32" height="12" rx="4" fill={accentColor} opacity="0.5" />
+                <rect x="534" y="184" width="32" height="12" rx="4" fill={accentColor} opacity="0.5" />
+
+                {/* Side stripe accent */}
+                <line x1="120" y1="162" x2="500" y2="162" stroke={accentColor} strokeWidth="1.5" opacity="0.2" />
+              </svg>
+            </motion.div>
+          );
+        })()}
 
         {/* Hero content — 2-column */}
         <div className="relative max-w-5xl mx-auto px-6 py-16 flex flex-col md:flex-row items-center gap-8 justify-between" style={{ minHeight: 420 }}>
