@@ -605,15 +605,44 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-6 py-12">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
             {[
-              { title: "Product",  links: ["Vehicle Health Reports", "Predictive Maintenance", "Service Booking", "Car Display Mode"] },
-              { title: "Features", links: ["AI Analysis", "OBD Connect", "Health Gauge", "AuraBot AI"] },
-              { title: "Support",  links: ["How It Works", "FAQ", "Contact Us", "Feedback"] },
-              { title: "Company",  links: ["About Drive Transparency", "Privacy Policy", "Terms of Use", "Careers"] },
+              { title: "Product", links: [
+                { label: "Vehicle Health Reports", action: () => navigate("/dashboard") },
+                { label: "Predictive Maintenance",  action: () => navigate("/dashboard") },
+                { label: "Service History",         action: () => navigate("/history") },
+                { label: "Car Display Mode",        action: () => navigate("/car-mode") },
+              ]},
+              { title: "Features", links: [
+                { label: "AI Analysis",     action: () => navigate("/input") },
+                { label: "OBD Diagnostics", action: () => navigate("/input") },
+                { label: "Health Gauge",    action: () => navigate("/dashboard") },
+                { label: "Nearby Centers",  action: () => document.getElementById("centers")?.scrollIntoView({ behavior: "smooth" }) },
+              ]},
+              { title: "Support", links: [
+                { label: "How It Works",  action: () => document.getElementById("stats")?.scrollIntoView({ behavior: "smooth" }) },
+                { label: "Contact Us",    action: () => window.open("mailto:karn.dronex@gmail.com?subject=Drive Transparency Support", "_blank") },
+                { label: "GitHub",        action: () => window.open("https://github.com/singhpriya74671/Drive-Transparency", "_blank") },
+                { label: "Feedback",      action: () => window.open("mailto:karn.dronex@gmail.com?subject=Drive Transparency Feedback", "_blank") },
+              ]},
+              { title: "Company", links: [
+                { label: "About Drive Transparency", action: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
+                { label: "Privacy Policy",           action: () => alert("Your data is stored securely and never shared with third parties.") },
+                { label: "Terms of Use",             action: () => alert("Drive Transparency is provided as-is for vehicle health monitoring purposes.") },
+                { label: "Open Source",              action: () => window.open("https://github.com/singhpriya74671/Drive-Transparency", "_blank") },
+              ]},
             ].map(({ title, links }) => (
               <div key={title}>
                 <p className="font-semibold text-sm mb-3" style={{ color: TEXT }}>{title}</p>
-                {links.map(l => (
-                  <p key={l} className="text-xs mb-2 cursor-pointer hover:opacity-80" style={{ color: MUTED }}>{l}</p>
+                {links.map(({ label, action }) => (
+                  <p
+                    key={label}
+                    onClick={action}
+                    className="text-xs mb-2 cursor-pointer transition-all"
+                    style={{ color: MUTED }}
+                    onMouseEnter={e => e.target.style.color = PRIMARY}
+                    onMouseLeave={e => e.target.style.color = MUTED}
+                  >
+                    {label}
+                  </p>
                 ))}
               </div>
             ))}
