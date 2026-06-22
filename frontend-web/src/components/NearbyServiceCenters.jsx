@@ -204,25 +204,63 @@ out body;`;
 
       <div className="p-5">
 
-        {/* IDLE — show locate button */}
+        {/* IDLE — show two options */}
         {phase === "idle" && (
-          <div className="text-center py-6 space-y-4">
-            <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center text-2xl"
-              style={{ background: SURFACE }}>📍</div>
-            <div>
-              <p className="font-semibold mb-1" style={{ color: TEXT }}>Find Service Centers Near You</p>
-              <p className="text-sm" style={{ color: MUTED }}>
-                We'll use your GPS to find real authorized and local garages nearby.
-              </p>
+          <div className="space-y-4">
+            <p className="text-sm text-center" style={{ color: MUTED }}>
+              Which type of service center do you prefer?
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+              {/* Authorized */}
+              <div className="rounded-xl p-4 flex flex-col gap-3"
+                style={{ background: "#4CAF7D10", border: "1px solid #4CAF7D44" }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🏢</span>
+                  <div>
+                    <p className="font-semibold text-sm" style={{ color: TEXT }}>Authorized Centers</p>
+                    <p className="text-xs" style={{ color: "#4CAF7D" }}>Official brand service</p>
+                  </div>
+                </div>
+                <ul className="space-y-1">
+                  {["Genuine parts", "Warranty honored", "Higher cost"].map(t => (
+                    <li key={t} className="text-xs flex gap-1.5" style={{ color: MUTED }}>
+                      <span style={{ color: "#4CAF7D" }}>✓</span>{t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Local */}
+              <div className="rounded-xl p-4 flex flex-col gap-3"
+                style={{ background: "#D4935E10", border: "1px solid #D4935E44" }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔧</span>
+                  <div>
+                    <p className="font-semibold text-sm" style={{ color: TEXT }}>Local Garages</p>
+                    <p className="text-xs" style={{ color: "#D4935E" }}>Independent mechanics</p>
+                  </div>
+                </div>
+                <ul className="space-y-1">
+                  {["Faster service", "More affordable", "Flexible repairs"].map(t => (
+                    <li key={t} className="text-xs flex gap-1.5" style={{ color: MUTED }}>
+                      <span style={{ color: "#D4935E" }}>✓</span>{t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
+
             <button
               onClick={locate}
-              className="px-6 py-3 rounded-xl font-semibold text-sm mx-auto block"
+              className="w-full py-3 rounded-xl font-semibold text-sm"
               style={{ background: PRIMARY, color: BG }}
             >
-              📍 Use My Location
+              📍 Find Both Near Me
             </button>
-            <p className="text-xs" style={{ color: "#555" }}>Location is used only in your browser — never sent to our servers</p>
+            <p className="text-xs text-center" style={{ color: "#555" }}>
+              Location used only in your browser — never stored on servers
+            </p>
           </div>
         )}
 

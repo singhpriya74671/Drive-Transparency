@@ -455,135 +455,129 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── MAINTENANCE CHECKLIST + AURABOT ───────────────────────────────── */}
+      {/* ── MAINTENANCE CHECKLIST ─────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* Checklist */}
-          <div className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-            <p className="text-xs uppercase tracking-widest mb-4" style={{ color: MUTED }}>Maintenance Checklist</p>
-            <div className="space-y-3">
-              {checklist.map((item, i) => (
-                <label
-                  key={i}
-                  className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
+        <div className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: MUTED }}>Maintenance Checklist</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {checklist.map((item, i) => (
+              <label
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
+                style={{
+                  background: item.done ? "#4CAF7D12" : SURFACE,
+                  border:     `1px solid ${item.done ? SUCCESS + "44" : BORDER}`,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={() => setChecklist(p => p.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
+                  className="hidden"
+                />
+                <div
+                  className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
                   style={{
-                    background: item.done ? "#4CAF7D12" : SURFACE,
-                    border:     `1px solid ${item.done ? SUCCESS + "44" : BORDER}`,
+                    background: item.done ? SUCCESS : "transparent",
+                    border:     `2px solid ${item.done ? SUCCESS : MUTED}`,
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={item.done}
-                    onChange={() => setChecklist(p => p.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
-                    className="hidden"
-                  />
-                  <div
-                    className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: item.done ? SUCCESS : "transparent",
-                      border:     `2px solid ${item.done ? SUCCESS : MUTED}`,
-                    }}
-                  >
-                    {item.done && <span style={{ color: "#fff", fontSize: 10 }}>✓</span>}
-                  </div>
-                  <span className="text-sm" style={{ color: item.done ? MUTED : TEXT, textDecoration: item.done ? "line-through" : "none" }}>
-                    {item.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-            <p className="text-xs mt-4" style={{ color: MUTED }}>
-              {checklist.filter(c => c.done).length} / {checklist.length} completed
-            </p>
-          </div>
-
-          {/* AuraBot */}
-          <div className="rounded-2xl p-6 flex flex-col" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">🤖</span>
-              <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>AI Assistant — AuraBot</p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-3 mb-4" style={{ maxHeight: 200, minHeight: 120 }}>
-              {auraChat.length === 0 ? (
-                <div className="text-sm italic text-center py-4" style={{ color: MUTED }}>
-                  "What should I service next month?"
+                  {item.done && <span style={{ color: "#fff", fontSize: 10 }}>✓</span>}
                 </div>
-              ) : (
-                auraChat.map((m, i) => (
-                  <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className="px-3.5 py-2.5 rounded-2xl text-sm max-w-xs"
-                      style={{
-                        background: m.role === "user" ? PRIMARY : SURFACE,
-                        color:      m.role === "user" ? BG     : TEXT,
-                        borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                      }}
-                    >
-                      {m.text}
-                    </div>
-                  </div>
-                ))
-              )}
-              {auraLoading && (
-                <div className="flex justify-start">
-                  <div className="px-4 py-2.5 rounded-2xl text-sm" style={{ background: SURFACE, color: MUTED }}>
-                    Analysing...
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
-                style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT }}
-                placeholder="Ask AuraBot anything about your vehicle..."
-                value={auraInput}
-                onChange={e => setAuraInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && sendAura()}
-                onFocus={e => (e.target.style.borderColor = PRIMARY)}
-                onBlur={e  => (e.target.style.borderColor = BORDER)}
-              />
-              <button
-                onClick={sendAura}
-                className="px-4 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0"
-                style={{ background: PRIMARY, color: BG }}
-              >
-                Ask
-              </button>
-            </div>
+                <span className="text-sm" style={{ color: item.done ? MUTED : TEXT, textDecoration: item.done ? "line-through" : "none" }}>
+                  {item.label}
+                </span>
+              </label>
+            ))}
           </div>
+          <p className="text-xs mt-4" style={{ color: MUTED }}>
+            {checklist.filter(c => c.done).length} / {checklist.length} completed
+          </p>
         </div>
       </section>
 
       {/* ── NEARBY SERVICE CENTERS ────────────────────────────────────────── */}
       <section id="centers" className="max-w-5xl mx-auto px-6 pb-12">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Nearby Service Centers</p>
+          <p className="text-sm mt-1" style={{ color: "#666" }}>Choose the type of service center that suits you</p>
         </div>
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="rounded-2xl p-8 flex flex-col items-center text-center gap-5"
-          style={{ background: CARD, border: `1px solid ${BORDER}` }}
-        >
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: SURFACE }}>📍</div>
-          <div>
-            <p className="font-bold text-lg mb-1" style={{ color: TEXT }}>Find Real Service Centers Near You</p>
-            <p className="text-sm" style={{ color: MUTED }}>We'll use your location to show actual garages and authorized service centers on Google Maps.</p>
-          </div>
-          <button
-            onClick={openNearbyMaps}
-            className="px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2"
-            style={{ background: PRIMARY, color: "#1C1C1C" }}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {/* Authorized */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="rounded-2xl p-6 flex flex-col gap-4"
+            style={{ background: CARD, border: `1px solid #4CAF7D44` }}
           >
-            📍 Find Centers Near Me
-          </button>
-          <p className="text-xs" style={{ color: MUTED }}>Opens Google Maps · Your location is never stored</p>
-        </motion.div>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: "#4CAF7D18" }}>🏢</div>
+              <div>
+                <p className="font-bold text-sm" style={{ color: TEXT }}>Authorized Service Centers</p>
+                <p className="text-xs mt-0.5" style={{ color: "#4CAF7D" }}>Official brand centers</p>
+              </div>
+            </div>
+            <ul className="space-y-1.5">
+              {["Genuine spare parts", "Manufacturer warranty honored", "Trained technicians", "Higher cost, higher trust"].map(t => (
+                <li key={t} className="text-xs flex items-center gap-2" style={{ color: MUTED }}>
+                  <span style={{ color: "#4CAF7D" }}>✓</span> {t}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    ({ coords }) => window.open(`https://www.google.com/maps/search/authorized+car+service+center/@${coords.latitude},${coords.longitude},14z`, "_blank"),
+                    () => window.open("https://www.google.com/maps/search/authorized+car+service+center+near+me", "_blank")
+                  );
+                } else window.open("https://www.google.com/maps/search/authorized+car+service+center+near+me", "_blank");
+              }}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold mt-auto"
+              style={{ background: "#4CAF7D", color: "#1C1C1C" }}
+            >
+              📍 Find Authorized Centers
+            </button>
+          </motion.div>
+
+          {/* Local */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
+            className="rounded-2xl p-6 flex flex-col gap-4"
+            style={{ background: CARD, border: `1px solid #D4935E44` }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: "#D4935E18" }}>🔧</div>
+              <div>
+                <p className="font-bold text-sm" style={{ color: TEXT }}>Local / Street Garages</p>
+                <p className="text-xs mt-0.5" style={{ color: "#D4935E" }}>Independent mechanics</p>
+              </div>
+            </div>
+            <ul className="space-y-1.5">
+              {["Faster turnaround time", "More affordable pricing", "Flexible with local parts", "Best for routine repairs"].map(t => (
+                <li key={t} className="text-xs flex items-center gap-2" style={{ color: MUTED }}>
+                  <span style={{ color: "#D4935E" }}>✓</span> {t}
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    ({ coords }) => window.open(`https://www.google.com/maps/search/car+garage+mechanic+near+me/@${coords.latitude},${coords.longitude},14z`, "_blank"),
+                    () => window.open("https://www.google.com/maps/search/car+garage+mechanic+near+me", "_blank")
+                  );
+                } else window.open("https://www.google.com/maps/search/car+garage+mechanic+near+me", "_blank");
+              }}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold mt-auto"
+              style={{ background: "#D4935E", color: "#1C1C1C" }}
+            >
+              📍 Find Local Garages
+            </button>
+          </motion.div>
+
+        </div>
+        <p className="text-xs text-center mt-3" style={{ color: "#555" }}>Opens Google Maps · Your location is never stored on our servers</p>
       </section>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
