@@ -28,6 +28,14 @@ class Vehicle(Base):
     has_braking_issues = Column(Boolean, default=False)
     additional_symptoms = Column(Text)
 
+    # OBD-II / Telematics fields
+    battery_voltage = Column(Float, default=12.6)
+    engine_temp_c = Column(Float, default=90.0)
+    has_dtc = Column(Boolean, default=False)
+    dtc_codes = Column(Text)
+    avg_speed_kmh = Column(Float, default=45.0)
+    engine_runtime_hours = Column(Float)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
