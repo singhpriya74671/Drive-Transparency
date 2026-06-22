@@ -12,3 +12,5 @@ shap
 joblib
 python-multipart
 httpx
+python-jose[cryptography]
+passlib[bcrypt]
