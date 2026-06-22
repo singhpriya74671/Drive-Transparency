@@ -24,6 +24,14 @@ class VehicleInput(BaseModel):
     has_braking_issues: bool = False
     additional_symptoms: Optional[str] = None
 
+    # OBD-II / Telematics fields
+    battery_voltage: Optional[float] = Field(default=12.6, ge=10.0, le=15.0)
+    engine_temp_c: Optional[float] = Field(default=90.0, ge=0, le=150)
+    has_dtc: bool = False
+    dtc_codes: Optional[str] = None
+    avg_speed_kmh: Optional[float] = Field(default=45.0, ge=0, le=200)
+    engine_runtime_hours: Optional[float] = Field(default=None, ge=0)
+
 
 class VehicleResponse(BaseModel):
     id: int
