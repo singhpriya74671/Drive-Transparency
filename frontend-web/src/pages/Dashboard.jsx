@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useVehicle } from "../context/VehicleContext";
 import HealthGauge from "../components/Dashboard/HealthGauge";
 import ComponentCard from "../components/Dashboard/ComponentCard";
+import NearbyServiceCenters from "../components/NearbyServiceCenters";
 
 const BG      = "#1C1C1C";
 const CARD    = "#272727";
@@ -223,6 +224,17 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        {/* Nearby Service Centers */}
+        {report.components.some(c => c.urgency !== "good") && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <NearbyServiceCenters />
+          </motion.div>
+        )}
 
         <div className="flex items-center justify-between pt-4">
           <p className="text-xs" style={{ color: "#4B5563" }}>
