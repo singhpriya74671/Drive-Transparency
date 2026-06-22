@@ -34,11 +34,24 @@ const MOCK_CHECKLIST = [
   { label: "AC Maintenance",  done: false },
 ];
 
-const MOCK_CENTERS = [
-  { name: "ABC Motors",      dist: "2.1 km", rating: 4.8, reviews: 142 },
-  { name: "AutoCare Hub",    dist: "3.4 km", rating: 4.7, reviews:  89 },
-  { name: "QuickFix Garage", dist: "4.2 km", rating: 4.5, reviews: 211 },
-];
+const openNearbyMaps = () => {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        window.open(
+          `https://www.google.com/maps/search/car+service+center/@${latitude},${longitude},14z`,
+          "_blank"
+        );
+      },
+      () => {
+        window.open("https://www.google.com/maps/search/car+service+center+near+me", "_blank");
+      }
+    );
+  } else {
+    window.open("https://www.google.com/maps/search/car+service+center+near+me", "_blank");
+  }
+};
 
 const AURA_RESPONSES = {
   oil:     "Based on mileage intervals, an engine oil change is recommended every 5,000–10,000 km. If your last change was over 6 months ago, schedule one soon.",
@@ -549,42 +562,28 @@ export default function Home() {
       <section id="centers" className="max-w-5xl mx-auto px-6 pb-12">
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Nearby Service Centers</p>
-          <span className="text-xs px-2 py-1 rounded-full" style={{ background: SURFACE, color: MUTED }}>Coming Soon</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {MOCK_CENTERS.map((c, i) => (
-            <motion.div
-              key={c.name}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="rounded-2xl p-5"
-              style={{ background: CARD, border: `1px solid ${BORDER}` }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <span style={{ fontSize: 22 }}>📍</span>
-                <div>
-                  <p className="font-semibold text-sm" style={{ color: TEXT }}>{c.name}</p>
-                  <p className="text-xs" style={{ color: MUTED }}>{c.dist}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-sm">
-                  <span style={{ color: "#D4935E" }}>⭐</span>
-                  <span style={{ color: TEXT, fontWeight: 600 }}>{c.rating}</span>
-                  <span style={{ color: MUTED, fontSize: 11 }}>({c.reviews})</span>
-                </div>
-                <button
-                  className="text-xs px-3 py-1.5 rounded-lg"
-                  style={{ background: SURFACE, color: PRIMARY, border: `1px solid ${BORDER}` }}
-                >
-                  Book →
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="rounded-2xl p-8 flex flex-col items-center text-center gap-5"
+          style={{ background: CARD, border: `1px solid ${BORDER}` }}
+        >
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl" style={{ background: SURFACE }}>📍</div>
+          <div>
+            <p className="font-bold text-lg mb-1" style={{ color: TEXT }}>Find Real Service Centers Near You</p>
+            <p className="text-sm" style={{ color: MUTED }}>We'll use your location to show actual garages and authorized service centers on Google Maps.</p>
+          </div>
+          <button
+            onClick={openNearbyMaps}
+            className="px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2"
+            style={{ background: PRIMARY, color: "#1C1C1C" }}
+          >
+            📍 Find Centers Near Me
+          </button>
+          <p className="text-xs" style={{ color: MUTED }}>Opens Google Maps · Your location is never stored</p>
+        </motion.div>
       </section>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
