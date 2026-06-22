@@ -5,6 +5,7 @@ import { useVehicle } from "../context/VehicleContext";
 import HealthGauge from "../components/Dashboard/HealthGauge";
 import ComponentCard from "../components/Dashboard/ComponentCard";
 import NearbyServiceCenters from "../components/NearbyServiceCenters";
+import VehicleIntelligence from "../components/VehicleIntelligence";
 
 const BG      = "#1C1C1C";
 const CARD    = "#272727";
@@ -242,51 +243,8 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* ── XGBoost Predictive Maintenance ──────────────────────────── */}
-        {report.components.some(c => c.maintenance_probability != null) && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="rounded-2xl p-5" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-            <div className="flex items-center gap-2 mb-4">
-              <span>🤖</span>
-              <h2 className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>AI Predictive Maintenance</h2>
-            </div>
-            <div className="space-y-3">
-              {report.components
-                .filter(c => c.maintenance_probability != null)
-                .sort((a, b) => b.maintenance_probability - a.maintenance_probability)
-                .map(c => {
-                  const prob  = c.maintenance_probability ?? 0;
-                  const days  = c.predicted_service_window_days ?? 180;
-                  const color = prob >= 70 ? DANGER : prob >= 40 ? WARNING : SUCCESS;
-                  const label = prob >= 70 ? "Critical" : prob >= 40 ? "Soon" : "Healthy";
-                  const window = days <= 7 ? "This week" : days <= 30 ? `${days} days` : `${Math.round(days / 30)} months`;
-                  return (
-                    <div key={c.component} className="rounded-xl p-4"
-                      style={{ background: `${color}10`, border: `1px solid ${color}30` }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm" style={{ color: TEXT }}>{c.label || c.component}</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                            style={{ background: `${color}25`, color }}>{label}</span>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-lg leading-none" style={{ color }}>{prob.toFixed(0)}%</p>
-                          <p className="text-xs mt-0.5" style={{ color: MUTED }}>within {window}</p>
-                        </div>
-                      </div>
-                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: SURFACE }}>
-                        <motion.div className="h-full rounded-full"
-                          initial={{ width: 0 }} animate={{ width: `${prob}%` }}
-                          transition={{ duration: 0.8, ease: "easeOut" }}
-                          style={{ background: color }} />
-                      </div>
-                      <p className="text-xs mt-1.5" style={{ color: MUTED }}>{c.explanation}</p>
-                    </div>
-                  );
-                })}
-            </div>
-          </motion.div>
-        )}
+        {/* ── Vehicle Intelligence (Unified AI Panel) ─────────────────── */}
+        <VehicleIntelligence report={report} selectedVehicle={selectedVehicle} />
 
         {/* ── Maintenance Timeline ─────────────────────────────────────── */}
         {timelineItems.length > 0 && (
