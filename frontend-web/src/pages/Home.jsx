@@ -338,62 +338,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── AI PREDICTION PANEL ───────────────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-6 pb-4">
-        <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className="rounded-2xl p-5" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span>🤖</span>
-              <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>AI Predictive Maintenance</p>
-            </div>
-            {report && (
-              <button onClick={() => navigate("/dashboard")}
-                className="text-xs px-3 py-1.5 rounded-lg"
-                style={{ background: SURFACE, color: PRIMARY, border: `1px solid ${BORDER}` }}>
-                Full Report →
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {(report
-              ? report.components.filter(c => c.maintenance_probability != null).sort((a,b) => b.maintenance_probability - a.maintenance_probability).slice(0,3)
-              : [
-                  { label: "Brake Service",    maintenance_probability: 87, predicted_service_window_days: 30,  urgency: "critical" },
-                  { label: "Tyre Replacement", maintenance_probability: 91, predicted_service_window_days: 45,  urgency: "critical" },
-                  { label: "Battery Check",    maintenance_probability: 74, predicted_service_window_days: 90,  urgency: "warning"  },
-                ]
-            ).map((c, i) => {
-              const prob  = c.maintenance_probability ?? 0;
-              const days  = c.predicted_service_window_days ?? 180;
-              const color = prob >= 70 ? DANGER : prob >= 40 ? WARNING : SUCCESS;
-              const label = c.label || c.component;
-              const window = days <= 7 ? "This week" : days <= 30 ? `${days} days` : `${Math.round(days/30)} months`;
-              return (
-                <div key={i} className="rounded-xl p-4" style={{ background: `${color}10`, border: `1px solid ${color}28` }}>
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm font-semibold" style={{ color: TEXT }}>{label}</p>
-                    <span className="text-lg font-black" style={{ color }}>{prob}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: SURFACE }}>
-                    <motion.div className="h-full rounded-full"
-                      initial={{ width: 0 }} whileInView={{ width: `${prob}%` }} viewport={{ once: true }}
-                      transition={{ duration: 0.8, delay: i * 0.1 }}
-                      style={{ background: color }} />
-                  </div>
-                  <p className="text-xs" style={{ color: MUTED }}>Expected: <span style={{ color }}>{window}</span></p>
-                </div>
-              );
-            })}
-          </div>
-          {!report && (
-            <p className="text-xs text-center mt-3" style={{ color: "#555" }}>
-              Demo data shown · <span className="underline cursor-pointer" style={{ color: PRIMARY }}
-                onClick={() => navigate(user ? "/input" : "/login")}>Add your vehicle</span> to see real predictions
-            </p>
-          )}
-        </motion.div>
-      </section>
 
       {/* ── STAT CARDS ────────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 -mt-10 relative z-10">
