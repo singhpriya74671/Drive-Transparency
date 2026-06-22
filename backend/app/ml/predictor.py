@@ -191,22 +191,28 @@ def _prob_to_health(prob: float) -> float:
     return round(max(5.0, (1 - prob) * 100), 1)
 
 
+def _safe_float(val, default):
+    try:
+        return float(val) if val is not None else float(default)
+    except (TypeError, ValueError):
+        return float(default)
+
 def _extract_features(v: Dict[str, Any]) -> np.ndarray:
-    mfg_year        = v.get("manufacturing_year", 2020)
-    vehicle_age     = max(datetime.now(timezone.utc).year - mfg_year, 0)
-    mileage         = float(v.get("mileage_km", 0))
-    bat_age         = float(v.get("battery_age_months", 12))
-    bat_v           = float(v.get("battery_voltage", 12.6))
-    eng_temp        = float(v.get("engine_temp_c", 90))
-    fuel_eff        = float(v.get("fuel_efficiency_kmpl", 15))
-    brake_condition = v.get("brake_condition", "good")
+    mfg_year        = v.get("manufacturing_year") or 2020
+    vehicle_age     = max(datetime.now(timezone.utc).year - int(mfg_year), 0)
+    mileage         = _safe_float(v.get("mileage_km"), 0)
+    bat_age         = _safe_float(v.get("battery_age_months"), 12)
+    bat_v           = _safe_float(v.get("battery_voltage"), 12.6)
+    eng_temp        = _safe_float(v.get("engine_temp_c"), 90)
+    fuel_eff        = _safe_float(v.get("fuel_efficiency_kmpl"), 15)
+    brake_condition = v.get("brake_condition") or "good"
     brake_sc        = {"good": 90, "fair": 50, "poor": 15}.get(brake_condition, 90)
-    has_dtc         = float(v.get("has_dtc", False))
-    avg_spd         = float(v.get("avg_speed_kmh", 45))
+    has_dtc         = _safe_float(v.get("has_dtc"), 0)
+    avg_spd         = _safe_float(v.get("avg_speed_kmh"), 45)
     last_oil        = v.get("last_oil_change_date")
     days_oil        = _days_since(last_oil)
     km_oil          = min(days_oil * 30, mileage)
-    eng_hrs         = float(v.get("engine_runtime_hours", vehicle_age * 300))
+    eng_hrs         = _safe_float(v.get("engine_runtime_hours"), vehicle_age * 300)
 
     return np.array([[vehicle_age, mileage, bat_age, bat_v, eng_temp,
                       fuel_eff, brake_sc, has_dtc, avg_spd, km_oil, eng_hrs]])
@@ -217,18 +223,18 @@ def _extract_features(v: Dict[str, Any]) -> np.ndarray:
 def predict_maintenance(vehicle_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     feats = _extract_features(vehicle_data)
 
-    mfg_year        = vehicle_data.get("manufacturing_year", 2020)
-    vehicle_age     = max(datetime.now(timezone.utc).year - mfg_year, 0)
-    mileage         = float(vehicle_data.get("mileage_km", 0))
-    battery_age     = int(vehicle_data.get("battery_age_months", 12))
-    brake_condition = vehicle_data.get("brake_condition", "good")
-    fuel_eff        = vehicle_data.get("fuel_efficiency_kmpl")
-    bat_v           = float(vehicle_data.get("battery_voltage", 12.6))
-    eng_temp        = float(vehicle_data.get("engine_temp_c", 90))
-    has_noise       = vehicle_data.get("has_unusual_noise", False)
-    has_vibration   = vehicle_data.get("has_vibration", False)
-    has_braking     = vehicle_data.get("has_braking_issues", False)
-    has_dtc         = vehicle_data.get("has_dtc", False)
+    mfg_year        = vehicle_data.get("manufacturing_year") or 2020
+    vehicle_age     = max(datetime.now(timezone.utc).year - int(mfg_year), 0)
+    mileage         = _safe_float(vehicle_data.get("mileage_km"), 0)
+    battery_age     = int(_safe_float(vehicle_data.get("battery_age_months"), 12))
+    brake_condition = vehicle_data.get("brake_condition") or "good"
+    fuel_eff        = vehicle_data.get("fuel_efficiency_kmpl")  # None means skip fuel section
+    bat_v           = _safe_float(vehicle_data.get("battery_voltage"), 12.6)
+    eng_temp        = _safe_float(vehicle_data.get("engine_temp_c"), 90)
+    has_noise       = bool(vehicle_data.get("has_unusual_noise", False))
+    has_vibration   = bool(vehicle_data.get("has_vibration", False))
+    has_braking     = bool(vehicle_data.get("has_braking_issues", False))
+    has_dtc         = bool(vehicle_data.get("has_dtc", False))
 
     last_oil_date   = vehicle_data.get("last_oil_change_date")
     days_oil        = _days_since(last_oil_date)
