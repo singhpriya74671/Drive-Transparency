@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useVehicle } from "../context/VehicleContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -142,6 +142,39 @@ function Gauge({ score = 87, size = 200 }) {
         <span>🟡 50–74 Average</span>
         <span>🔴 0–49 Critical</span>
       </div>
+    </div>
+  );
+}
+
+// ─── Animated counter ────────────────────────────────────────────────────────
+function CountUp({ target, suffix = "", prefix = "", duration = 1200 }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  useEffect(() => {
+    if (!inView || typeof target !== "number") return;
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(target * ease));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [inView, target, duration]);
+  return <span ref={ref}>{prefix}{inView && typeof target === "number" ? val : "--"}{suffix}</span>;
+}
+
+// ─── Section label ────────────────────────────────────────────────────────────
+function SectionLabel({ children }) {
+  return (
+    <div className="flex items-center gap-3 mb-6">
+      <div className="h-px flex-1" style={{ background: `linear-gradient(90deg, transparent, #3D3D3D)` }} />
+      <p className="text-xs uppercase tracking-widest font-semibold px-3 py-1 rounded-full"
+        style={{ color: "#8C8480", background: "#272727", border: "1px solid #3D3D3D" }}>
+        {children}
+      </p>
+      <div className="h-px flex-1" style={{ background: `linear-gradient(90deg, #3D3D3D, transparent)` }} />
     </div>
   );
 }
@@ -424,25 +457,47 @@ export default function Home() {
       </section>
 
 
+      {/* ── TRUST BADGES ──────────────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-6 pt-6 pb-2 relative z-10">
+        <div className="flex flex-wrap justify-center gap-3">
+          {[
+            { icon: "🤖", label: "XGBoost AI" },
+            { icon: "🔌", label: "OBD-II Connect" },
+            { icon: "🛡️", label: "8-Component Scan" },
+            { icon: "📍", label: "Live GPS Centers" },
+            { icon: "⚡", label: "Real-Time Analysis" },
+          ].map(({ icon, label }) => (
+            <div key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
+              style={{ background: "#272727", border: "1px solid #3D3D3D", color: "#8C8480" }}>
+              <span>{icon}</span>{label}
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── STAT CARDS ────────────────────────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-6 -mt-10 relative z-10">
+      <section id="stats" className="max-w-5xl mx-auto px-6 py-6 relative z-10">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { icon: "❤️", label: "Health Score",  value: report ? `${healthScore}/100` : "--",           color: report ? (healthScore >= 75 ? SUCCESS : WARNING) : MUTED },
-            { icon: "🔧", label: "Services Due",  value: report ? `${servicesDue} Due` : "--",           color: report ? (servicesDue > 0 ? WARNING : SUCCESS)  : MUTED },
-            { icon: "📊", label: "Mileage",        value: selectedVehicle ? `${(mileage/1000).toFixed(0)}k km` : "--", color: selectedVehicle ? PRIMARY : MUTED },
-            { icon: "💰", label: "Cost Estimate",  value: report && costEst > 0 ? `₹${costEst.toLocaleString()}` : "--", color: report && costEst > 0 ? PRIMARY : MUTED },
-          ].map(({ icon, label, value, color }, i) => (
-            <motion.div
-              key={label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className="rounded-2xl p-5 text-center"
-              style={{ background: CARD, border: `1px solid ${BORDER}` }}
-            >
-              <div className="text-3xl mb-2">{icon}</div>
-              <p className="text-xl font-black" style={{ color }}>{value}</p>
+            { icon: "❤️", label: "Health Score",  num: report ? healthScore : null, suffix: "/100", color: report ? (healthScore >= 75 ? SUCCESS : healthScore >= 50 ? WARNING : DANGER) : MUTED, glow: SUCCESS },
+            { icon: "🔧", label: "Services Due",  num: report ? servicesDue : null,  suffix: " Due", color: report ? (servicesDue > 0 ? WARNING : SUCCESS) : MUTED, glow: WARNING },
+            { icon: "🛣️", label: "Mileage",       num: selectedVehicle ? Math.round(mileage/1000) : null, suffix: "k km", color: selectedVehicle ? PRIMARY : MUTED, glow: PRIMARY },
+            { icon: "💰", label: "Cost Estimate", num: report && costEst > 0 ? costEst : null, prefix: "₹", color: report && costEst > 0 ? PRIMARY : MUTED, glow: WARNING },
+          ].map(({ icon, label, num, suffix = "", prefix = "", color, glow }, i) => (
+            <motion.div key={label}
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.09 }}
+              whileHover={{ y: -4, boxShadow: `0 8px 30px ${glow}22` }}
+              className="rounded-2xl p-5 text-center cursor-default transition-all"
+              style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mx-auto mb-3"
+                style={{ background: `${glow}15`, border: `1px solid ${glow}30` }}>
+                {icon}
+              </div>
+              <p className="text-2xl font-black" style={{ color }}>
+                {num != null
+                  ? <CountUp target={num} suffix={suffix} prefix={prefix} />
+                  : "--"}
+              </p>
               <p className="text-xs mt-1" style={{ color: MUTED }}>{label}</p>
             </motion.div>
           ))}
@@ -450,7 +505,8 @@ export default function Home() {
       </section>
 
       {/* ── HEALTH GAUGE + RECOMMENDATIONS ────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-6 py-10">
+      <section className="max-w-5xl mx-auto px-6 pb-10">
+        <SectionLabel>Vehicle Health</SectionLabel>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Gauge */}
@@ -533,118 +589,175 @@ export default function Home() {
 
       {/* ── QUICK ACTIONS ─────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pb-10">
-        <p className="text-xs uppercase tracking-widest mb-4" style={{ color: MUTED }}>Quick Actions</p>
+        <SectionLabel>Quick Actions</SectionLabel>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { icon: "📅", label: "Book Service",           sub: "Schedule an appointment",   to: "/history" },
-            { icon: "📋", label: "Maintenance Checklist",  sub: "View your service plan",    to: "/dashboard" },
-            { icon: "📈", label: "Health Report",          sub: "Full AI analysis",          to: "/dashboard" },
-            { icon: "📍", label: "Nearby Service Centers", sub: "Find garages near you",     to: "#centers" },
-          ].map(({ icon, label, sub, to }) => (
+            { icon: "📅", label: "Book Service",           sub: "Schedule an appointment",   to: "/history",    accent: WARNING },
+            { icon: "📋", label: "Maintenance Checklist",  sub: "View your service plan",    to: "/dashboard",  accent: SUCCESS },
+            { icon: "📈", label: "Health Report",          sub: "Full AI analysis",          to: "/dashboard",  accent: PRIMARY },
+            { icon: "📍", label: "Service Centers",        sub: "Find garages near you",     to: "#centers",    accent: "#FF6B6B" },
+          ].map(({ icon, label, sub, to, accent }) => (
             <motion.button
               key={label}
-              whileHover={{ scale: 1.03 }}
+              initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              whileHover={{ y: -4, boxShadow: `0 12px 32px ${accent}25`, borderColor: accent + "55" }}
               onClick={() => to.startsWith("#") ? document.getElementById("centers")?.scrollIntoView({ behavior: "smooth" }) : navigate(to)}
-              className="rounded-2xl p-5 text-left flex items-start gap-3 w-full"
+              className="rounded-2xl p-5 text-left w-full transition-all"
               style={{ background: CARD, border: `1px solid ${BORDER}` }}
             >
-              <span className="text-2xl">{icon}</span>
-              <div>
-                <p className="font-semibold text-sm" style={{ color: TEXT }}>{label}</p>
-                <p className="text-xs mt-0.5" style={{ color: MUTED }}>{sub}</p>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
+                style={{ background: `${accent}18`, border: `1px solid ${accent}35` }}>
+                {icon}
+              </div>
+              <p className="font-semibold text-sm" style={{ color: TEXT }}>{label}</p>
+              <p className="text-xs mt-1" style={{ color: MUTED }}>{sub}</p>
+              <div className="flex items-center gap-1 mt-3 text-xs font-medium" style={{ color: accent }}>
+                <span>Open</span>
+                <span style={{ fontSize: 10 }}>→</span>
               </div>
             </motion.button>
           ))}
         </div>
       </section>
 
+      {/* ── HOW IT WORKS ──────────────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-6 pb-10">
+        <SectionLabel>How It Works</SectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 relative">
+          {/* connecting line — desktop only */}
+          <div className="hidden sm:block absolute top-10 left-[33%] right-[33%] h-px"
+            style={{ background: `linear-gradient(90deg, ${PRIMARY}44, ${SUCCESS}44)` }} />
+          {[
+            { step: "01", icon: "🚗", title: "Add Your Vehicle", desc: "Enter your car model, mileage, fuel type and basic service history.", color: PRIMARY },
+            { step: "02", icon: "🤖", title: "Run AI Scan",      desc: "Our XGBoost models analyze 8 components and predict maintenance windows.", color: WARNING },
+            { step: "03", icon: "📋", title: "Get Service Plan", desc: "Receive a prioritized action list with cost estimates and nearby centers.", color: SUCCESS },
+          ].map(({ step, icon, title, desc, color }, i) => (
+            <motion.div key={step}
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12 }}
+              className="rounded-2xl p-6 text-center flex flex-col items-center gap-3"
+              style={{ background: CARD, border: `1px solid ${color}30` }}>
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl relative"
+                style={{ background: `${color}15`, border: `1px solid ${color}40` }}>
+                {icon}
+                <span className="absolute -top-2 -right-2 text-xs font-black px-1.5 py-0.5 rounded-full"
+                  style={{ background: color, color: BG }}>{step}</span>
+              </div>
+              <p className="font-bold text-sm" style={{ color: TEXT }}>{title}</p>
+              <p className="text-xs leading-relaxed" style={{ color: MUTED }}>{desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
       {/* ── HEALTH ANALYTICS ──────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pb-10">
-        <p className="text-xs uppercase tracking-widest mb-4" style={{ color: MUTED }}>Health Analytics</p>
+        <SectionLabel>Health Analytics</SectionLabel>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="rounded-2xl p-5" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          <motion.div whileHover={{ y: -3, boxShadow: `0 8px 28px ${SUCCESS}18` }}
+            className="rounded-2xl p-5 transition-all" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold" style={{ color: TEXT }}>Health Trend</p>
-              <span className="text-xs" style={{ color: MUTED }}>Last 7 weeks</span>
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${SUCCESS}15`, color: SUCCESS }}>↑ Improving</span>
             </div>
             <LineChart data={report ? HEALTH_TREND.map((_, i) => Math.min(100, healthScore - (HEALTH_TREND.length - 1 - i) * 2.5)) : HEALTH_TREND} color={SUCCESS} />
             <div className="flex justify-between text-xs mt-2" style={{ color: MUTED }}>
               {["W1","W2","W3","W4","W5","W6","W7"].map(w => <span key={w}>{w}</span>)}
             </div>
-          </div>
-          <div className="rounded-2xl p-5" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          </motion.div>
+          <motion.div whileHover={{ y: -3, boxShadow: `0 8px 28px ${PRIMARY}18` }}
+            className="rounded-2xl p-5 transition-all" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold" style={{ color: TEXT }}>Service Cost (₹)</p>
-              <span className="text-xs" style={{ color: MUTED }}>Last 6 months</span>
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${PRIMARY}15`, color: PRIMARY }}>Last 6 months</span>
             </div>
             <BarChart data={COST_TREND} labels={MONTHS} color={PRIMARY} />
-            <p className="text-xs mt-2 text-right" style={{ color: MUTED }}>
-              Total: ₹{COST_TREND.reduce((a, b) => a + b, 0).toLocaleString()}
+            <p className="text-xs mt-2 text-right font-semibold" style={{ color: PRIMARY }}>
+              Total ₹{COST_TREND.reduce((a, b) => a + b, 0).toLocaleString()}
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* ── MAINTENANCE CHECKLIST ─────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pb-10">
+        <SectionLabel>Maintenance Checklist</SectionLabel>
         <div className="rounded-2xl p-6" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Maintenance Checklist</p>
-            <p className="text-xs" style={{ color: MUTED }}>
-              {checklist.filter(c => c.done).length} / {checklist.length} completed
+          {/* Progress header */}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold" style={{ color: TEXT }}>
+              {checklist.filter(c => c.done).length} of {checklist.length} completed
             </p>
+            <span className="text-xs font-bold px-2 py-1 rounded-full"
+              style={{
+                background: checklist.length > 0 && checklist.filter(c=>c.done).length === checklist.length ? `${SUCCESS}20` : `${PRIMARY}18`,
+                color: checklist.length > 0 && checklist.filter(c=>c.done).length === checklist.length ? SUCCESS : PRIMARY,
+              }}>
+              {checklist.length > 0 ? Math.round((checklist.filter(c=>c.done).length/checklist.length)*100) : 0}%
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="h-2 rounded-full mb-5 overflow-hidden" style={{ background: SURFACE }}>
+            <motion.div className="h-full rounded-full"
+              animate={{ width: checklist.length > 0 ? `${(checklist.filter(c=>c.done).length/checklist.length)*100}%` : "0%" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ background: `linear-gradient(90deg, ${PRIMARY}, ${SUCCESS})` }} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {checklist.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
-                style={{ background: item.done ? "#4CAF7D12" : SURFACE, border: `1px solid ${item.done ? SUCCESS + "44" : BORDER}` }}
+              <motion.div key={i} layout
+                whileHover={{ scale: 1.01 }}
+                className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all group"
+                style={{ background: item.done ? `${SUCCESS}10` : SURFACE, border: `1px solid ${item.done ? SUCCESS + "44" : BORDER}` }}
                 onClick={() => setChecklist(p => p.map((x, j) => j === i ? { ...x, done: !x.done } : x))}
               >
-                <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                <motion.div animate={{ scale: item.done ? [1.3, 1] : 1 }}
+                  className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
                   style={{ background: item.done ? SUCCESS : "transparent", border: `2px solid ${item.done ? SUCCESS : MUTED}` }}>
                   {item.done && <span style={{ color: "#fff", fontSize: 10 }}>✓</span>}
-                </div>
+                </motion.div>
                 <span className="text-sm flex-1" style={{ color: item.done ? MUTED : TEXT, textDecoration: item.done ? "line-through" : "none" }}>
                   {item.label}
                 </span>
                 <button
                   onClick={e => { e.stopPropagation(); setChecklist(p => p.filter((_, j) => j !== i)); }}
-                  className="text-xs opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0"
+                  className="text-xs w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ color: MUTED }}
-                  onMouseEnter={e => e.target.style.color = DANGER}
-                  onMouseLeave={e => e.target.style.color = MUTED}
+                  onMouseEnter={e => e.currentTarget.style.color = DANGER}
+                  onMouseLeave={e => e.currentTarget.style.color = MUTED}
                   title="Remove"
                 >✕</button>
-              </div>
+              </motion.div>
             ))}
           </div>
 
           {/* Add new item */}
-          <div className="flex gap-2 pt-3" style={{ borderTop: `1px solid ${BORDER}` }}>
+          <div className="flex gap-2 pt-4" style={{ borderTop: `1px solid ${BORDER}` }}>
             <input
               className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
               style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT }}
-              placeholder="Add new checklist item..."
+              placeholder="Add checklist item..."
               value={newItem}
               onChange={e => setNewItem(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addChecklistItem()}
               onFocus={e => (e.target.style.borderColor = PRIMARY)}
               onBlur={e  => (e.target.style.borderColor = BORDER)}
             />
-            <button
+            <motion.button
+              whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
               onClick={addChecklistItem}
               className="px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
-              style={{ background: newItem.trim() ? PRIMARY : SURFACE, color: newItem.trim() ? BG : MUTED, border: `1px solid ${BORDER}` }}
-            >+ Add</button>
+              style={{ background: newItem.trim() ? PRIMARY : SURFACE, color: newItem.trim() ? BG : MUTED, border: `1px solid ${newItem.trim() ? PRIMARY : BORDER}`, transition: "all 0.2s" }}
+            >+ Add</motion.button>
           </div>
         </div>
       </section>
 
       {/* ── NEARBY SERVICE CENTERS ────────────────────────────────────────── */}
       <section id="centers" className="max-w-5xl mx-auto px-6 pb-12">
+        <SectionLabel>Nearby Service Centers</SectionLabel>
         <div className="mb-4">
-          <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Nearby Service Centers</p>
+          <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}></p>
           <p className="text-sm mt-1" style={{ color: "#666" }}>Choose the type of service center that suits you</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
