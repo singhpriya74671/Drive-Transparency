@@ -9,6 +9,7 @@ backend/drivetransparency.db
 # Node
 frontend-web/node_modules/
 frontend-web/build/
+frontend-web/.env
 frontend-web/.env.local
 frontend-web/.env.production
 

@@ -1,19 +1,31 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { VehicleProvider } from "./context/VehicleContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import Home           from "./pages/Home";
-import Login          from "./pages/Login";
-import VehicleInput   from "./pages/VehicleInput";
-import Dashboard      from "./pages/Dashboard";
-import CarMode        from "./pages/CarMode";
-import ServiceHistory from "./pages/ServiceHistory";
-import AuraBot        from "./components/AuraBot";
+
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/Login"));
+const VehicleInput = lazy(() => import("./pages/VehicleInput"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CarMode = lazy(() => import("./pages/CarMode"));
+const ServiceHistory = lazy(() => import("./pages/ServiceHistory"));
+const AuraBot = lazy(() => import("./components/AuraBot"));
 
 const BG   = "#1C1C1C";
 const CARD = "#272727";
 const PRI  = "#DDD0C8";
+
+function AppFallback() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-6 py-16" style={{ color: PRI }}>
+      <div className="max-w-sm w-full rounded-2xl p-6 text-center" style={{ background: CARD, border: "1px solid #3D3D3D" }}>
+        <div className="w-10 h-10 mx-auto rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: PRI, borderTopColor: "transparent" }} />
+        <p className="mt-4 text-sm" style={{ color: "#8C8480" }}>Loading Drive Transparency...</p>
+      </div>
+    </div>
+  );
+}
 
 function DtLogo({ size = 32 }) {
   return (
@@ -104,16 +116,18 @@ export default function App() {
         <BrowserRouter>
           <div className="min-h-screen" style={{ background: BG }}>
             <Navbar />
-            <Routes>
-              <Route path="/"         element={<Home />} />
-              <Route path="/login"    element={<Login />} />
-              <Route path="/car-mode" element={<CarMode />} />
-              <Route path="/input"    element={<Protected><VehicleInput /></Protected>} />
-              <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
-              <Route path="/history"  element={<Protected><ServiceHistory /></Protected>} />
-              <Route path="*"         element={<Navigate to="/" replace />} />
-            </Routes>
-            <AuraBot />
+            <Suspense fallback={<AppFallback />}>
+              <Routes>
+                <Route path="/"          element={<Home />} />
+                <Route path="/login"     element={<Login />} />
+                <Route path="/car-mode"  element={<CarMode />} />
+                <Route path="/input"     element={<Protected><VehicleInput /></Protected>} />
+                <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+                <Route path="/history"   element={<Protected><ServiceHistory /></Protected>} />
+                <Route path="*"          element={<Navigate to="/" replace />} />
+              </Routes>
+              <AuraBot />
+            </Suspense>
             <Toaster
               position="top-right"
               toastOptions={{
