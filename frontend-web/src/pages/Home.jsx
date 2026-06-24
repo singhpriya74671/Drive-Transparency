@@ -590,11 +590,12 @@ export default function Home() {
       {/* ── QUICK ACTIONS ─────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pb-10">
         <SectionLabel>Quick Actions</SectionLabel>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
             { icon: "📅", label: "Book Service",           sub: "Schedule an appointment",   to: "/history",    accent: WARNING },
             { icon: "📋", label: "Maintenance Checklist",  sub: "View your service plan",    to: "/dashboard",  accent: SUCCESS },
             { icon: "📈", label: "Health Report",          sub: "Full AI analysis",          to: "/dashboard",  accent: PRIMARY },
+            { icon: "🧾", label: "Bill Analyzer",          sub: "Check fair pricing",        to: "/bill-analyzer", accent: "#7C5CFF" },
             { icon: "📍", label: "Service Centers",        sub: "Find garages near you",     to: "#centers",    accent: "#FF6B6B" },
           ].map(({ icon, label, sub, to, accent }) => (
             <motion.button

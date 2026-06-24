@@ -10,6 +10,7 @@ const VehicleInput = lazy(() => import("./pages/VehicleInput"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CarMode = lazy(() => import("./pages/CarMode"));
 const ServiceHistory = lazy(() => import("./pages/ServiceHistory"));
+const BillAnalyzer = lazy(() => import("./pages/BillAnalyzer"));
 const AuraBot = lazy(() => import("./components/AuraBot"));
 
 const BG   = "#1C1C1C";
@@ -69,6 +70,7 @@ function Navbar() {
           { to: "/",        label: "Home" },
           { to: "/input",   label: "Check Vehicle" },
           { to: "/dashboard", label: "Dashboard" },
+          { to: "/bill-analyzer", label: "Bill Analyzer" },
           { to: "/history", label: "Service History" },
         ].map(({ to, label }) => (
           <Link
@@ -123,6 +125,7 @@ export default function App() {
                 <Route path="/car-mode"  element={<CarMode />} />
                 <Route path="/input"     element={<Protected><VehicleInput /></Protected>} />
                 <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+                <Route path="/bill-analyzer" element={<Protected><BillAnalyzer /></Protected>} />
                 <Route path="/history"   element={<Protected><ServiceHistory /></Protected>} />
                 <Route path="*"          element={<Navigate to="/" replace />} />
               </Routes>
