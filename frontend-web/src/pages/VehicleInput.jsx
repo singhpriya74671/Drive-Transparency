@@ -260,7 +260,7 @@ export default function VehicleInput() {
                   </Row>
                   <Row>
                     <Field label="Manufacturing Year *">
-                      <input className="fi" type="number" min="1990" max="2026" value={form.manufacturing_year} onChange={e => set("manufacturing_year", e.target.value)} required />
+                      <input className="fi" type="number" min="1990" max={new Date().getFullYear() + 1} value={form.manufacturing_year} onChange={e => set("manufacturing_year", e.target.value)} required />
                     </Field>
                     <Field label="Fuel Type">
                       <select className="fi" value={form.fuel_type} onChange={e => set("fuel_type", e.target.value)}>

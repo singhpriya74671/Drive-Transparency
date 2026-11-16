@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal
 from datetime import datetime
+
+from app.schemas.service import _validate_manufacturing_year
 
 
 class VehicleInput(BaseModel):
@@ -8,7 +10,7 @@ class VehicleInput(BaseModel):
     phone: Optional[str] = None
     vehicle_model: str = Field(..., min_length=2)
     manufacturer: Optional[str] = None
-    manufacturing_year: int = Field(..., ge=1990, le=2026)
+    manufacturing_year: int = Field(..., ge=1990)
     mileage_km: float = Field(..., ge=0)
     fuel_type: str = Field(default="petrol", pattern="^(petrol|diesel|electric|hybrid|cng)$")
 
@@ -31,6 +33,8 @@ class VehicleInput(BaseModel):
     dtc_codes: Optional[str] = None
     avg_speed_kmh: Optional[float] = Field(default=None, ge=0, le=300)
     engine_runtime_hours: Optional[float] = Field(default=None, ge=0, le=1_000_000)
+
+    _check_year = field_validator("manufacturing_year")(_validate_manufacturing_year)
 
 
 class VehicleResponse(BaseModel):

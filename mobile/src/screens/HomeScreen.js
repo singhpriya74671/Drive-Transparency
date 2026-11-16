@@ -9,12 +9,14 @@ const STATUS_COLOR = {
   critical: "#ef4444",
   warning:  "#f59e0b",
   good:     "#10b981",
+  unknown:  "#9ca3af",
 };
 
 const STATUS_LABEL = {
   critical: "Immediate Attention Required",
   warning:  "Service Recommended Soon",
   good:     "Vehicle in Good Condition",
+  unknown:  "Not Enough Data to Assess",
 };
 
 export default function HomeScreen({ navigation }) {
@@ -22,7 +24,7 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => { loadCachedReport(); }, []);
 
-  const alertColor = report ? STATUS_COLOR[report.overall_status] || "#10b981" : "#6366f1";
+  const alertColor = report ? STATUS_COLOR[report.overall_status] || STATUS_COLOR.unknown : "#6366f1";
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -40,7 +42,7 @@ export default function HomeScreen({ navigation }) {
         <View style={[styles.scoreCard, { borderColor: alertColor + "66" }]}>
           <View style={[styles.scoreBadge, { backgroundColor: alertColor + "22" }]}>
             <Text style={[styles.scoreNumber, { color: alertColor }]}>
-              {Math.round(report.overall_health_score)}
+              {report.overall_health_score == null ? "—" : Math.round(report.overall_health_score)}
             </Text>
             <Text style={[styles.scoreLabel, { color: alertColor }]}>/ 100</Text>
           </View>

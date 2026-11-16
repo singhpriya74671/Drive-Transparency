@@ -88,6 +88,17 @@ class MaintenancePredictionTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 422)
 
+    def test_blank_form_fields_are_treated_as_missing(self):
+        response = self.analyze(owner_name="", phone="", vehicle_model="", dtc_codes="", battery_voltage=12.6)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_next_model_year_is_accepted(self):
+        from datetime import datetime
+        year = datetime.now().year
+        self.assertEqual(self.analyze(manufacturing_year=year + 1, battery_voltage=12.6).status_code, 200)
+        self.assertEqual(self.analyze(manufacturing_year=year + 2, battery_voltage=12.6).status_code, 422)
+
     def test_unknown_request_fields_are_rejected(self):
         response = self.analyze(unexpected_prediction_override=True)
 

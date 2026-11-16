@@ -9,12 +9,14 @@ const STATUS_COLOR = {
   critical: "#ef4444",
   warning:  "#f59e0b",
   good:     "#10b981",
+  unknown:  "#9ca3af",
 };
 
 const STATUS_LABEL = {
   critical: "Immediate Attention Required",
   warning:  "Service Recommended Soon",
   good:     "Vehicle in Good Condition",
+  unknown:  "Not Enough Data to Assess",
 };
 
 const COMPONENT_ICONS = {
@@ -52,9 +54,11 @@ function ComponentCard({ comp }) {
             <Text style={styles.compName}>{comp.label}</Text>
             <View style={styles.progressRow}>
               <View style={styles.progressBg}>
-                <View style={[styles.progressFill, { width: `${comp.health_score}%`, backgroundColor: color }]} />
+                <View style={[styles.progressFill, { width: `${comp.health_score ?? 0}%`, backgroundColor: color }]} />
               </View>
-              <Text style={[styles.progressText, { color }]}>{Math.round(comp.health_score)}%</Text>
+              <Text style={[styles.progressText, { color }]}>
+                {comp.health_score == null ? "—" : `${Math.round(comp.health_score)}%`}
+              </Text>
             </View>
           </View>
         </View>
@@ -66,12 +70,17 @@ function ComponentCard({ comp }) {
       {expanded && (
         <View style={styles.compDetail}>
           <Text style={styles.compExplanation}>{comp.explanation}</Text>
-          <View style={styles.costRow}>
-            <Text style={styles.costLabel}>Estimated Cost:</Text>
-            <Text style={styles.costValue}>
-              ₹{comp.estimated_cost_min.toLocaleString()} – ₹{comp.estimated_cost_max.toLocaleString()}
-            </Text>
-          </View>
+          {comp.recommended_action ? (
+            <Text style={styles.compExplanation}>Recommended action: {comp.recommended_action}</Text>
+          ) : null}
+          {comp.estimated_cost_min != null && comp.estimated_cost_max != null && (
+            <View style={styles.costRow}>
+              <Text style={styles.costLabel}>Estimated Cost:</Text>
+              <Text style={styles.costValue}>
+                ₹{comp.estimated_cost_min.toLocaleString()} – ₹{comp.estimated_cost_max.toLocaleString()}
+              </Text>
+            </View>
+          )}
           {comp.shap_factors?.length > 0 && (
             <View style={styles.factorsSection}>
               <Text style={styles.factorsTitle}>Key Factors:</Text>
@@ -107,9 +116,9 @@ export default function DashboardScreen({ navigation }) {
     );
   }
 
-  const alertColor   = STATUS_COLOR[report.overall_status] || "#10b981";
-  const totalCostMin = report.components.reduce((s, c) => s + (c.urgency !== "good" ? c.estimated_cost_min : 0), 0);
-  const totalCostMax = report.components.reduce((s, c) => s + (c.urgency !== "good" ? c.estimated_cost_max : 0), 0);
+  const alertColor   = STATUS_COLOR[report.overall_status] || STATUS_COLOR.unknown;
+  const totalCostMin = report.components.reduce((s, c) => s + (c.urgency !== "good" ? (c.estimated_cost_min ?? 0) : 0), 0);
+  const totalCostMax = report.components.reduce((s, c) => s + (c.urgency !== "good" ? (c.estimated_cost_max ?? 0) : 0), 0);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -119,7 +128,7 @@ export default function DashboardScreen({ navigation }) {
       <View style={[styles.healthCard, { borderColor: alertColor + "44" }]}>
         <View style={styles.healthTop}>
           <View style={[styles.scoreBig, { backgroundColor: alertColor + "22" }]}>
-            <Text style={[styles.scoreNum, { color: alertColor }]}>{Math.round(report.overall_health_score)}</Text>
+            <Text style={[styles.scoreNum, { color: alertColor }]}>{report.overall_health_score == null ? "—" : Math.round(report.overall_health_score)}</Text>
             <Text style={[styles.scoreOut, { color: alertColor }]}>/100</Text>
           </View>
           <View style={styles.healthRight}>

@@ -1,7 +1,18 @@
 from pydantic import BaseModel
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime
+
+
+def _max_manufacturing_year() -> int:
+    # Next year's models are sold before the calendar year starts.
+    return datetime.now().year + 1
+
+
+def _validate_manufacturing_year(value: Optional[int]) -> Optional[int]:
+    if value is not None and value > _max_manufacturing_year():
+        raise ValueError(f"manufacturing_year must be {_max_manufacturing_year()} or earlier")
+    return value
 
 
 class MaintenanceAnalysisInput(BaseModel):
@@ -11,7 +22,7 @@ class MaintenanceAnalysisInput(BaseModel):
     phone: Optional[str] = Field(default=None, max_length=20)
     vehicle_model: Optional[str] = Field(default=None, min_length=2, max_length=100)
     manufacturer: Optional[str] = Field(default=None, max_length=100)
-    manufacturing_year: Optional[int] = Field(default=None, ge=1900, le=2026)
+    manufacturing_year: Optional[int] = Field(default=None, ge=1900)
     mileage_km: Optional[float] = Field(default=None, ge=0, le=2_000_000)
     fuel_type: Optional[Literal["petrol", "diesel", "electric", "hybrid", "cng"]] = None
 
@@ -33,6 +44,16 @@ class MaintenanceAnalysisInput(BaseModel):
     dtc_codes: Optional[str] = Field(default=None, max_length=500)
     avg_speed_kmh: Optional[float] = Field(default=None, ge=0, le=300)
     engine_runtime_hours: Optional[float] = Field(default=None, ge=0, le=1_000_000)
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value: Any) -> Any:
+        # Forms send "" for untouched fields; treat that as "not provided".
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    _check_year = field_validator("manufacturing_year")(_validate_manufacturing_year)
 
 
 class ComponentHealth(BaseModel):
