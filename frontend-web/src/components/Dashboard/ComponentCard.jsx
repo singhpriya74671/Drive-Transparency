@@ -13,6 +13,7 @@ const URGENCY = {
   warning:  { bg: "#FFFBEB", border: T.warning, text: "#B45309", label: "Warning"  },
   good:     { bg: "#F0FDF4", border: T.success, text: "#047857", label: "Healthy"  },
 };
+const UNKNOWN = { bg: T.surface, border: T.faint, text: T.muted, label: "Not assessed" };
 
 const ICONS = {
   engine_oil:   "🛢️",
@@ -27,8 +28,10 @@ const ICONS = {
 
 export default function ComponentCard({ component }) {
   const [open, setOpen] = useState(false);
-  const s    = URGENCY[component.urgency] || URGENCY.good;
+  const s    = URGENCY[component.urgency] || UNKNOWN;
   const icon = ICONS[component.component] || "🔧";
+  const hasHealth = component.health_score != null;
+  const hasCost = component.estimated_cost_min != null && component.estimated_cost_max != null;
 
   return (
     <motion.div
@@ -45,13 +48,15 @@ export default function ComponentCard({ component }) {
             <p className="truncate text-sm font-semibold" style={{ color: TEXT }}>{component.label}</p>
             <div className="mt-1 flex items-center gap-2">
               <div className="h-1.5 w-24 overflow-hidden rounded-full" style={{ background: "#E2E8F0" }}>
-                <div
-                  className="h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${component.health_score}%`, background: s.border }}
-                />
+                {hasHealth && (
+                  <div
+                    className="h-full rounded-full transition-all duration-1000"
+                    style={{ width: `${component.health_score}%`, background: s.border }}
+                  />
+                )}
               </div>
               <span className="font-mono text-xs" style={{ color: s.text }}>
-                {Math.round(component.health_score)}%
+                {hasHealth ? `${Math.round(component.health_score)}%` : "--"}
               </span>
             </div>
           </div>
@@ -77,12 +82,24 @@ export default function ComponentCard({ component }) {
             style={{ borderTop: `1px solid ${BORDER}` }}
           >
             <p className="text-sm leading-relaxed" style={{ color: MUTED }}>{component.explanation}</p>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-xs" style={{ color: MUTED }}>Estimated cost:</span>
-              <span className="text-sm font-semibold" style={{ color: PRIMARY }}>
-                ₹{component.estimated_cost_min.toLocaleString()} – ₹{component.estimated_cost_max.toLocaleString()}
-              </span>
-            </div>
+            {component.risk_score != null && (
+              <p className="mt-3 text-xs" style={{ color: MUTED }}>
+                Rule-based risk score: <strong style={{ color: TEXT }}>{component.risk_score}/100</strong>
+              </p>
+            )}
+            {component.recommended_action && (
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: TEXT }}>
+                Recommended action: {component.recommended_action}
+              </p>
+            )}
+            {hasCost && (
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span className="text-xs" style={{ color: MUTED }}>Estimated cost:</span>
+                <span className="text-sm font-semibold" style={{ color: PRIMARY }}>
+                  ₹{component.estimated_cost_min.toLocaleString()} – ₹{component.estimated_cost_max.toLocaleString()}
+                </span>
+              </div>
+            )}
             {component.shap_factors?.length > 0 && (
               <div className="mt-3">
                 <p className="mb-2 text-xs" style={{ color: MUTED }}>Key factors:</p>

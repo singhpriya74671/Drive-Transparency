@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { T, componentFor, overallUrgency, temperatureUrgency, urgencyStyle } from "./dashboardUtils";
+import { T, componentFor, temperatureUrgency, urgencyStyle } from "./dashboardUtils";
 import BrandLogo from "./BrandLogo";
 import { resolveVehicleProfile } from "../../data/vehicleCatalog";
 
@@ -415,10 +415,7 @@ function buildMarkers(report, vehicle, profile) {
   const engine = componentFor(report, "engine", "engine_oil", "motor");
   const brakes = componentFor(report, "brakes");
   const battery = componentFor(report, "battery");
-  const climateUrgency = temperatureUrgency(vehicle) || overallUrgency(report);
-  const general = overallUrgency(report);
-  const radarUrgency = report ? "good" : general;
-  const cameraUrgency = report ? "good" : general;
+  const climateUrgency = temperatureUrgency(vehicle);
   const front = g.length / 2;
   const rear = -g.length / 2;
   const axle = Math.max(g.length * 0.3, g.wheelbase / 2);
@@ -426,15 +423,15 @@ function buildMarkers(report, vehicle, profile) {
   return [
     {
       key: profile.electric ? "motor" : "engine", label: profile.electric ? "Motor" : "Engine",
-      urgency: engine?.urgency || general, score: engine?.health_score,
+      urgency: engine?.urgency || null, score: engine?.health_score,
       anchor: new THREE.Vector3(profile.electric ? axle * 0.6 : front * 0.45, g.bodyTop * 0.85, 0),
     },
     {
-      key: "radar", label: "Radar", urgency: radarUrgency, score: null,
+      key: "radar", label: "Radar", urgency: null, score: null,
       anchor: new THREE.Vector3(front - 0.02, g.bodyTop * 0.6, 0),
     },
     {
-      key: "camera", label: "Camera", urgency: cameraUrgency, score: null,
+      key: "camera", label: "Camera", urgency: null, score: null,
       anchor: new THREE.Vector3(g.roofFront * 0.5, g.roofTop * 0.92, 0),
     },
     {
@@ -442,18 +439,18 @@ function buildMarkers(report, vehicle, profile) {
       anchor: new THREE.Vector3((g.roofFront + g.roofRear) * 0.5, g.roofTop + 0.02, 0),
     },
     {
-      key: "battery", label: "Battery", urgency: battery?.urgency || general, score: battery?.health_score,
+      key: "battery", label: "Battery", urgency: battery?.urgency || null, score: battery?.health_score,
       anchor: new THREE.Vector3(profile.electric ? -axle * 0.1 : rear * 0.35, g.ride * 1.15, g.width * 0.48),
     },
     {
-      key: "brakes", label: "Brakes", urgency: brakes?.urgency || general, score: brakes?.health_score,
+      key: "brakes", label: "Brakes", urgency: brakes?.urgency || null, score: brakes?.health_score,
       anchor: new THREE.Vector3(axle, g.wheelRadius, g.width * 0.52),
     },
   ];
 }
 
 function Marker({ marker, active, onHover, onSelect, markerRef }) {
-  const style = urgencyStyle(marker.urgency || "good");
+  const style = urgencyStyle(marker.urgency);
   return (
     <div
       ref={markerRef}

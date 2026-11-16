@@ -6,13 +6,13 @@ import { API_BASE_URL } from "../config/apiConfig";
 
 const BASE_URL = API_BASE_URL;
 
-const BG      = "#1C1C1C";
-const CARD    = "#272727";
-const SURFACE = "#323232";
-const PRIMARY = "#DDD0C8";
-const TEXT    = "#F0EBE5";
-const MUTED   = "#8C8480";
-const BORDER  = "#3D3D3D";
+const BG      = "#FFFFFF";
+const CARD    = "#FFFFFF";
+const SURFACE = "#F8FAFC";
+const PRIMARY = "#2563EB";
+const TEXT    = "#0F172A";
+const MUTED   = "#64748B";
+const BORDER  = "#E2E8F0";
 
 const SERVICE_TYPES = [
   { key: "oil_change",        icon: "🛢️", label: "Oil Change" },
@@ -26,7 +26,7 @@ const SERVICE_TYPES = [
   { key: "other",             icon: "📋", label: "Other" },
 ];
 
-const urgencyColor = { critical: "#CF5C5C", warning: "#D4935E", good: "#4CAF7D" };
+const urgencyColor = { critical: "#EF4444", warning: "#F59E0B", good: "#10B981" };
 
 export default function ServiceHistory() {
   const { selectedVehicle, report } = useVehicle();
@@ -140,8 +140,8 @@ export default function ServiceHistory() {
           >
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs uppercase tracking-widest" style={{ color: MUTED }}>Current Vehicle Health</p>
-              <button onClick={() => navigate("/dashboard")} className="text-xs underline" style={{ color: PRIMARY }}>
-                View Report →
+              <button onClick={() => navigate("/diagnostics")} className="text-xs underline" style={{ color: PRIMARY }}>
+                View Diagnostics →
               </button>
             </div>
             <div className="flex items-center gap-6">
@@ -152,7 +152,7 @@ export default function ServiceHistory() {
               <div className="flex-1 grid grid-cols-2 gap-2">
                 {report.components.slice(0, 4).map(c => (
                   <div key={c.component} className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: urgencyColor[c.urgency] || "#4CAF7D" }} />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: urgencyColor[c.urgency] || "#10B981" }} />
                     <span className="text-xs truncate" style={{ color: MUTED }}>{c.label}</span>
                     <span className="text-xs ml-auto font-mono" style={{ color: urgencyColor[c.urgency] }}>{Math.round(c.health_score)}%</span>
                   </div>
@@ -237,7 +237,7 @@ export default function ServiceHistory() {
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold text-sm" style={{ color: TEXT }}>{sType.label}</p>
                         {rec.is_completed && (
-                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#4CAF7D22", color: "#4CAF7D" }}>✓ Done</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#10B98122", color: "#10B981" }}>✓ Done</span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-3 mt-1.5 text-xs" style={{ color: MUTED }}>

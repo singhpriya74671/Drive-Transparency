@@ -4,13 +4,13 @@ import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
-const BG      = "#1C1C1C";
-const CARD    = "#272727";
-const SURFACE = "#323232";
-const PRIMARY = "#DDD0C8";
-const TEXT    = "#F0EBE5";
-const MUTED   = "#8C8480";
-const BORDER  = "#3D3D3D";
+const BG      = "#FFFFFF";
+const CARD    = "#FFFFFF";
+const SURFACE = "#F8FAFC";
+const PRIMARY = "#2563EB";
+const TEXT    = "#0F172A";
+const MUTED   = "#64748B";
+const BORDER  = "#E2E8F0";
 
 export default function Login() {
   const [mode, setMode]   = useState("login"); // "login" | "register"
@@ -157,7 +157,7 @@ export default function Login() {
           </p>
         </div>
 
-        <p className="text-xs text-center mt-5" style={{ color: "#555" }}>
+        <p className="text-xs text-center mt-5" style={{ color: MUTED }}>
           Your data is stored locally and never shared.
         </p>
       </motion.div>

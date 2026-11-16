@@ -5,6 +5,8 @@ backend/**/__pycache__/
 backend/*.pyc
 backend/.env
 backend/drivetransparency.db
+backend/data/maintenance_training.csv
+backend/app/ml/artifacts/
 
 # Node
 frontend-web/node_modules/

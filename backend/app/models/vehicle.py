@@ -18,8 +18,8 @@ class Vehicle(Base):
 
     last_service_date = Column(DateTime)
     last_oil_change_date = Column(DateTime)
-    battery_age_months = Column(Integer, default=0)
-    brake_condition = Column(String(20), default="good")
+    battery_age_months = Column(Integer)
+    brake_condition = Column(String(20))
     fuel_efficiency_kmpl = Column(Float)
 
     has_unusual_noise = Column(Boolean, default=False)
@@ -29,11 +29,11 @@ class Vehicle(Base):
     additional_symptoms = Column(Text)
 
     # OBD-II / Telematics fields
-    battery_voltage = Column(Float, default=12.6)
-    engine_temp_c = Column(Float, default=90.0)
-    has_dtc = Column(Boolean, default=False)
+    battery_voltage = Column(Float)
+    engine_temp_c = Column(Float)
+    has_dtc = Column(Boolean)
     dtc_codes = Column(Text)
-    avg_speed_kmh = Column(Float, default=45.0)
+    avg_speed_kmh = Column(Float)
     engine_runtime_hours = Column(Float)
 
     created_at = Column(DateTime, default=datetime.utcnow)

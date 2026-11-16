@@ -6,43 +6,69 @@ import { useAuth } from "../context/AuthContext";
 import { findCatalogEntry, listBrands, listVehicleOptions } from "../data/vehicleCatalog";
 import toast from "react-hot-toast";
 
-const BG      = "#1C1C1C";
-const CARD    = "#272727";
-const SURFACE = "#323232";
-const PRIMARY = "#DDD0C8";
-const TEXT    = "#F0EBE5";
-const MUTED   = "#8C8480";
-const BORDER  = "#3D3D3D";
+const BG      = "#FFFFFF";
+const CARD    = "#FFFFFF";
+const SURFACE = "#F8FAFC";
+const PRIMARY = "#2563EB";
+const TEXT    = "#0F172A";
+const MUTED   = "#64748B";
+const BORDER  = "#E2E8F0";
 
 const STEPS = [
   { n: 1, label: "Vehicle Info",      icon: "🚗" },
   { n: 2, label: "Service History",   icon: "🔧" },
   { n: 3, label: "Condition",         icon: "📊" },
-  { n: 4, label: "OBD-II / AI",       icon: "🤖" },
+  { n: 4, label: "Readings",          icon: "📟" },
   { n: 5, label: "Symptoms",          icon: "⚠️" },
 ];
 
 const INITIAL = {
   owner_name: "", phone: "", vehicle_model: "", manufacturer: "",
-  manufacturing_year: 2020, fuel_type: "petrol",
+  manufacturing_year: "", fuel_type: "petrol",
   last_service_date: "", last_oil_change_date: "",
-  mileage_km: "", battery_age_months: 0, brake_condition: "good", fuel_efficiency_kmpl: "",
+  mileage_km: "", battery_age_months: "", brake_condition: "", fuel_efficiency_kmpl: "",
   has_unusual_noise: false, has_vibration: false,
   has_reduced_mileage: false, has_braking_issues: false,
   additional_symptoms: "",
   // OBD-II / Telematics
-  battery_voltage: 12.6,
-  engine_temp_c: 90,
-  has_dtc: false,
+  battery_voltage: "",
+  engine_temp_c: "",
+  has_dtc: null,
   dtc_codes: "",
-  avg_speed_kmh: 45,
+  avg_speed_kmh: "",
   engine_runtime_hours: "",
 };
 
 export default function VehicleInput() {
-  const [form, setForm] = useState(INITIAL);
+  const { createVehicle, analyzeVehicle, analyzeQuick, setSelected, selectedVehicle, loading } = useVehicle();
+  const [form, setForm] = useState(() => {
+    if (!selectedVehicle) return INITIAL;
+    const savedVehicle = selectedVehicle.id > 0 && !selectedVehicle._manual;
+    const model = selectedVehicle.vehicle_model || "";
+    const manufacturer = selectedVehicle.manufacturer || "";
+    return {
+      ...INITIAL,
+      vehicle_model: manufacturer && !model.toLowerCase().includes(manufacturer.toLowerCase())
+        ? `${manufacturer} ${model}` : model,
+      manufacturer,
+      ...(selectedVehicle._demo ? {
+        manufacturing_year: String(selectedVehicle.manufacturing_year || ""),
+        mileage_km: String(selectedVehicle.mileage_km ?? ""),
+        fuel_type: selectedVehicle.fuel_type || "petrol",
+        battery_voltage: String(selectedVehicle.battery_voltage ?? ""),
+        engine_temp_c: String(selectedVehicle.engine_temp_c ?? ""),
+        brake_condition: selectedVehicle.brake_condition || "",
+        has_dtc: selectedVehicle.has_dtc ?? null,
+        dtc_codes: selectedVehicle.dtc_codes || "",
+        has_vibration: selectedVehicle.has_vibration === true,
+      } : savedVehicle ? {
+        manufacturing_year: String(selectedVehicle.manufacturing_year || ""),
+        mileage_km: String(selectedVehicle.mileage_km ?? ""),
+        fuel_type: selectedVehicle.fuel_type || "petrol",
+      } : {}),
+    };
+  });
   const [step, setStep] = useState(1);
-  const { createVehicle, analyzeVehicle, analyzeQuick, setSelected, loading } = useVehicle();
   const { user } = useAuth();
   const navigate = useNavigate();
   const vehicleOptions = useMemo(() => listVehicleOptions(), []);
@@ -60,45 +86,80 @@ export default function VehicleInput() {
     }
   };
 
-  const buildPayload = () => ({
-    ...form,
-    manufacturing_year:     Number(form.manufacturing_year),
-    mileage_km:             Number(form.mileage_km),
-    battery_age_months:     Number(form.battery_age_months),
-    fuel_efficiency_kmpl:   form.fuel_efficiency_kmpl ? Number(form.fuel_efficiency_kmpl) : null,
-    last_service_date:      form.last_service_date    || null,
-    last_oil_change_date:   form.last_oil_change_date || null,
-    battery_voltage:        Number(form.battery_voltage),
-    engine_temp_c:          Number(form.engine_temp_c),
-    avg_speed_kmh:          Number(form.avg_speed_kmh),
-    engine_runtime_hours:   form.engine_runtime_hours ? Number(form.engine_runtime_hours) : null,
-    dtc_codes:              form.dtc_codes || null,
-  });
+  const buildPayload = () => {
+    const optionalNumber = (value) => value === "" || value == null ? null : Number(value);
+    return {
+      ...form,
+      manufacturing_year: optionalNumber(form.manufacturing_year),
+      mileage_km: optionalNumber(form.mileage_km),
+      battery_age_months: optionalNumber(form.battery_age_months),
+      brake_condition: form.brake_condition || null,
+      fuel_efficiency_kmpl: optionalNumber(form.fuel_efficiency_kmpl),
+      last_service_date: form.last_service_date || null,
+      last_oil_change_date: form.last_oil_change_date || null,
+      battery_voltage: optionalNumber(form.battery_voltage),
+      engine_temp_c: optionalNumber(form.engine_temp_c),
+      has_dtc: form.has_dtc,
+      avg_speed_kmh: optionalNumber(form.avg_speed_kmh),
+      engine_runtime_hours: optionalNumber(form.engine_runtime_hours),
+      dtc_codes: form.dtc_codes.trim() || null,
+      additional_symptoms: form.additional_symptoms.trim() || null,
+    };
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const payload = buildPayload();
+      if (!payload.owner_name?.trim() || !payload.vehicle_model?.trim() || payload.manufacturing_year == null) {
+        setStep(1);
+        toast.error("Add your name, vehicle model, and manufacturing year before saving.");
+        return;
+      }
+      if (payload.mileage_km == null) {
+        setStep(3);
+        toast.error("Add the vehicle mileage before saving.");
+        return;
+      }
       const vehicle = await createVehicle(payload);
       setSelected({ ...payload, ...vehicle });
       const result  = await analyzeVehicle(vehicle.id);
-      if (result) navigate("/dashboard");
+      if (result) navigate("/diagnostics");
     } catch {
       // individual toasts already shown by createVehicle / analyzeVehicle
     }
   };
 
   const handleQuick = async () => {
-    const payload = buildPayload();
-    const result = await analyzeQuick(payload);
-    if (result) {
-      setSelected({ ...payload, id: 0, _unsaved: true });
-      navigate("/dashboard");
+    try {
+      const payload = buildPayload();
+      const hasSupportedInput = payload.battery_voltage != null
+        || payload.engine_temp_c != null
+        || payload.brake_condition != null
+        || payload.has_dtc === true
+        || Boolean(payload.dtc_codes)
+        || payload.has_unusual_noise
+        || payload.has_vibration
+        || payload.has_reduced_mileage
+        || payload.has_braking_issues
+        || Boolean(payload.additional_symptoms);
+      if (!hasSupportedInput) {
+        setStep(4);
+        toast.error("Enter a measured reading, brake condition, active fault code, or symptom before running a check.");
+        return;
+      }
+      const result = await analyzeQuick(payload);
+      if (result) {
+        setSelected({ ...payload, id: 0, _unsaved: true });
+        navigate("/diagnostics");
+      }
+    } catch {
+      // The context displays the API error; do not replace it with a local report.
     }
   };
 
-  const voltageColor = form.battery_voltage < 11.8 ? "#CF5C5C" : form.battery_voltage < 12.2 ? "#D4935E" : "#4CAF7D";
-  const tempColor    = form.engine_temp_c > 115 ? "#CF5C5C" : form.engine_temp_c > 100 ? "#D4935E" : "#4CAF7D";
+  const voltageColor = form.battery_voltage === "" ? MUTED : form.battery_voltage < 11.8 ? "#EF4444" : form.battery_voltage < 12.2 ? "#F59E0B" : "#10B981";
+  const tempColor    = form.engine_temp_c === "" ? MUTED : form.engine_temp_c > 115 ? "#EF4444" : form.engine_temp_c > 100 ? "#F59E0B" : "#10B981";
 
   return (
     <div className="min-h-screen px-4 py-8" style={{ background: BG, color: TEXT }}>
@@ -109,8 +170,21 @@ export default function VehicleInput() {
           <h1 className="text-2xl font-bold mb-1" style={{ color: TEXT }}>Vehicle Analysis</h1>
           <p className="text-sm" style={{ color: MUTED }}>
             {user ? `Welcome, ${user.name} — ` : ""}
-            Fill in the details to generate your AI health report.
+            Enter any readings or symptoms you know, then run a rule-based screening check.
           </p>
+          <p className="mx-auto mt-2 max-w-xl text-xs leading-5" style={{ color: MUTED }}>
+            Start with vehicle details, use Continue to move through the sections, then choose Quick Check on the final step.
+            No live OBD sensor is connected; only the readings and symptoms you enter can be assessed.
+          </p>
+          <p className="mx-auto mt-1 max-w-xl text-xs leading-5" style={{ color: MUTED }}>
+            Results appear on Diagnostics after checking. The backend service must be running; if it is stopped, no report can be returned.
+          </p>
+          {selectedVehicle?._demo && (
+            <p role="note" className="mx-auto mt-2 max-w-xl rounded-lg border px-3 py-2 text-xs leading-5"
+              style={{ borderColor: "#FCD34D", background: "#FFFBEB", color: "#78350F" }}>
+              DEMO SAMPLE VALUES are prefilled below. They are illustrative only; replace them with actual readings before using Quick Check.
+            </p>
+          )}
 
           {/* Step indicator */}
           <div className="flex items-center justify-center gap-0 mt-6 overflow-x-auto pb-1">
@@ -186,7 +260,7 @@ export default function VehicleInput() {
                   </Row>
                   <Row>
                     <Field label="Manufacturing Year *">
-                      <input className="fi" type="number" min="1990" max="2026" value={form.manufacturing_year} onChange={e => set("manufacturing_year", e.target.value)} required />
+                      <input className="fi" type="number" min="1990" max={new Date().getFullYear() + 1} value={form.manufacturing_year} onChange={e => set("manufacturing_year", e.target.value)} required />
                     </Field>
                     <Field label="Fuel Type">
                       <select className="fi" value={form.fuel_type} onChange={e => set("fuel_type", e.target.value)}>
@@ -217,7 +291,7 @@ export default function VehicleInput() {
                     </Field>
                   </Row>
                   <div className="mt-3 p-3 rounded-xl text-xs" style={{ background: SURFACE, color: MUTED }}>
-                    💡 Leave blank if unsure — the AI will factor this as a risk element.
+                    💡                     Unknown values are left unassessed; they are not treated as faults.
                   </div>
                 </SectionCard>
                 <BtnRow onBack={() => setStep(1)} onNext={() => setStep(3)} />
@@ -241,6 +315,7 @@ export default function VehicleInput() {
                   </Row>
                   <Field label="Brake Condition">
                     <select className="fi" value={form.brake_condition} onChange={e => set("brake_condition", e.target.value)}>
+                      <option value="">Not assessed</option>
                       <option value="good">Good — Brakes function correctly</option>
                       <option value="fair">Fair — Minor issues noticed</option>
                       <option value="poor">Poor — Noticeable braking problem</option>
@@ -254,50 +329,42 @@ export default function VehicleInput() {
             {/* ── Step 4: OBD-II / AI Diagnostics ── */}
             {step === 4 && (
               <motion.div key="s4" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} className="space-y-4">
-                <SectionCard title="OBD-II & AI Diagnostics" icon="🤖">
+                <SectionCard title="Measured Readings & Fault Codes" icon="📟">
                   <div className="p-3 rounded-xl text-xs mb-2" style={{ background: `${PRIMARY}15`, border: `1px solid ${PRIMARY}33`, color: MUTED }}>
-                    🔌 These readings come from your OBD-II port / dashboard. Approximate values are fine — the AI uses them to refine predictions.
+                    For a rule-based check, enter any observed battery voltage, engine temperature, fault-code status, brake condition, or symptom. Other fields are saved as vehicle details but are not used by the current screening rules. Blank readings are not assumed to be normal.
                   </div>
 
                   {/* Battery Voltage */}
-                  <Field label={`Battery Voltage: ${form.battery_voltage}V`}>
+                  <Field label="Battery Voltage (V, optional)">
                     <div className="space-y-2">
-                      <input type="range" min="10.5" max="14.8" step="0.1"
+                      <input className="fi" type="number" min="8" max="16" step="0.1"
+                        placeholder="Only enter a measured value"
                         value={form.battery_voltage}
-                        onChange={e => set("battery_voltage", parseFloat(e.target.value))}
-                        style={{ width: "100%", accentColor: voltageColor }}
+                        onChange={e => set("battery_voltage", e.target.value)}
                       />
                       <div className="flex justify-between text-xs" style={{ color: MUTED }}>
-                        <span style={{ color: "#CF5C5C" }}>10.5V (Critical)</span>
-                        <span style={{ color: voltageColor, fontWeight: 600 }}>{form.battery_voltage}V</span>
-                        <span style={{ color: "#4CAF7D" }}>14.8V (Good)</span>
+                        <span style={{ color: "#EF4444" }}>Below 11.8V: critical</span>
+                        <span style={{ color: voltageColor, fontWeight: 600 }}>{form.battery_voltage === "" ? "Not provided" : `${form.battery_voltage}V`}</span>
+                        <span style={{ color: "#F59E0B" }}>Below 12.2V: monitor</span>
                       </div>
-                      <p className="text-xs" style={{ color: voltageColor }}>
-                        {form.battery_voltage < 11.8 ? "⚠️ Very low — battery may fail soon" :
-                         form.battery_voltage < 12.2 ? "🟡 Below normal — monitor closely" :
-                         form.battery_voltage < 12.6 ? "🟢 Acceptable range" : "✅ Good charge level"}
-                      </p>
+                      <p className="text-xs" style={{ color: MUTED }}>Voltage screening does not measure battery state of health.</p>
                     </div>
                   </Field>
 
                   {/* Engine Temperature */}
-                  <Field label={`Engine Temperature: ${form.engine_temp_c}°C`}>
+                  <Field label="Engine Temperature (°C, optional)">
                     <div className="space-y-2">
-                      <input type="range" min="60" max="135" step="1"
+                      <input className="fi" type="number" min="0" max="250" step="1"
+                        placeholder="Only enter a measured value"
                         value={form.engine_temp_c}
-                        onChange={e => set("engine_temp_c", parseInt(e.target.value))}
-                        style={{ width: "100%", accentColor: tempColor }}
+                        onChange={e => set("engine_temp_c", e.target.value)}
                       />
                       <div className="flex justify-between text-xs" style={{ color: MUTED }}>
-                        <span>60°C (Cold)</span>
-                        <span style={{ color: tempColor, fontWeight: 600 }}>{form.engine_temp_c}°C</span>
-                        <span style={{ color: "#CF5C5C" }}>135°C (Overheating)</span>
+                        <span>Above 100°C: monitor</span>
+                        <span style={{ color: tempColor, fontWeight: 600 }}>{form.engine_temp_c === "" ? "Not provided" : `${form.engine_temp_c}°C`}</span>
+                        <span style={{ color: "#EF4444" }}>Above 115°C: critical</span>
                       </div>
-                      <p className="text-xs" style={{ color: tempColor }}>
-                        {form.engine_temp_c > 115 ? "🔴 Overheating — inspect cooling system immediately" :
-                         form.engine_temp_c > 100 ? "🟡 Elevated — monitor temperature" :
-                         "✅ Normal operating temperature"}
-                      </p>
+                      <p className="text-xs" style={{ color: MUTED }}>A single temperature reading does not assess all engine conditions.</p>
                     </div>
                   </Field>
 
@@ -313,25 +380,16 @@ export default function VehicleInput() {
                   </Row>
 
                   {/* Fault Codes */}
-                  <div
-                    className="flex items-center gap-4 p-3.5 rounded-xl cursor-pointer transition-all"
-                    style={{
-                      background: form.has_dtc ? "#CF5C5C18" : SURFACE,
-                      border:     `1px solid ${form.has_dtc ? "#CF5C5C" : BORDER}`,
-                    }}
-                    onClick={() => set("has_dtc", !form.has_dtc)}
-                  >
-                    <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-                      style={{ background: form.has_dtc ? "#CF5C5C" : "transparent", border: `2px solid ${form.has_dtc ? "#CF5C5C" : MUTED}` }}>
-                      {form.has_dtc && <span style={{ color: "#fff", fontSize: 10 }}>✓</span>}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm" style={{ color: TEXT }}>⚡ Fault Codes Active (DTC)</p>
-                      <p className="text-xs" style={{ color: MUTED }}>Check Engine light is on or OBD scanner shows error codes</p>
-                    </div>
-                  </div>
+                  <Field label="Fault codes status">
+                    <select className="fi" value={form.has_dtc == null ? "" : String(form.has_dtc)}
+                      onChange={e => set("has_dtc", e.target.value === "" ? null : e.target.value === "true")}>
+                      <option value="">Unknown / not checked</option>
+                      <option value="false">No active fault codes reported</option>
+                      <option value="true">Fault code(s) active</option>
+                    </select>
+                  </Field>
 
-                  {form.has_dtc && (
+                  {form.has_dtc === true && (
                     <Field label="DTC Codes (optional)">
                       <input className="fi" placeholder="e.g. P0300, P0171, B1234"
                         value={form.dtc_codes} onChange={e => set("dtc_codes", e.target.value)} />
@@ -357,13 +415,13 @@ export default function VehicleInput() {
                       key={key}
                       className="flex items-center gap-4 p-3.5 rounded-xl cursor-pointer transition-all"
                       style={{
-                        background: form[key] ? "#CF5C5C18" : SURFACE,
-                        border:     `1px solid ${form[key] ? "#CF5C5C" : BORDER}`,
+                        background: form[key] ? "#EF444418" : SURFACE,
+                        border:     `1px solid ${form[key] ? "#EF4444" : BORDER}`,
                       }}
                       onClick={() => set(key, !form[key])}
                     >
                       <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-                        style={{ background: form[key] ? "#CF5C5C" : "transparent", border: `2px solid ${form[key] ? "#CF5C5C" : MUTED}` }}>
+                        style={{ background: form[key] ? "#EF4444" : "transparent", border: `2px solid ${form[key] ? "#EF4444" : MUTED}` }}>
                         {form[key] && <span style={{ color: "#fff", fontSize: 10 }}>✓</span>}
                       </div>
                       <div>
@@ -387,12 +445,12 @@ export default function VehicleInput() {
                 <button type="button" className="w-full py-3 rounded-xl text-sm font-semibold"
                   style={{ background: SURFACE, color: TEXT, border: `1px solid ${BORDER}` }}
                   disabled={loading} onClick={handleQuick}>
-                  {loading ? "Analyzing..." : "⚡ Quick AI Analysis (without saving)"}
+                  {loading ? "Checking..." : "⚡ Quick Check (without saving)"}
                 </button>
                 <button type="submit" className="w-full py-3 rounded-xl text-sm font-bold"
                   style={{ background: PRIMARY, color: BG, opacity: loading ? 0.6 : 1 }}
                   disabled={loading}>
-                  {loading ? "🔄 Running AI Analysis..." : "🤖 Save & Run Full AI Analysis"}
+                  {loading ? "🔄 Running check..." : "Save vehicle & run check"}
                 </button>
               </motion.div>
             )}

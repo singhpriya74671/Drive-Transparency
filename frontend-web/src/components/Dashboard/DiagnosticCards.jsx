@@ -8,6 +8,7 @@ import {
   urgencyStyle,
   voltageUrgency,
   formatNumber,
+  measuredValue,
 } from "./dashboardUtils";
 import { isElectricVehicle } from "../../data/vehicleCatalog";
 
@@ -41,7 +42,7 @@ function Icon({ name, size = 18, color = "currentColor", strokeWidth = 1.8 }) {
 }
 
 export function StatusStrip({ report, vehicle, analyzing, onAnalyze, onStop, onShowReport }) {
-  const score = report ? Math.round(report.overall_health_score) : null;
+  const score = report?.overall_health_score == null ? null : Math.round(report.overall_health_score);
   const electric = isElectricVehicle(vehicle);
   const unitName = electric ? "MOTOR" : "ENGINE";
   const engine = componentFor(report, electric ? "motor" : "engine", electric ? "battery" : "engine_oil");
@@ -51,11 +52,13 @@ export function StatusStrip({ report, vehicle, analyzing, onAnalyze, onStop, onS
 
   const headline = !report
     ? "AWAITING ANALYSIS"
-    : engine?.urgency === "critical"
+    : !engine
+      ? "NOT ASSESSED"
+      : engine.urgency === "critical"
       ? `${unitName} ATTENTION`
       : engine?.urgency === "warning"
         ? `${unitName} IN PROGRESS`
-        : `${unitName} HEALTHY`;
+        : `${unitName} SCREENED`;
 
   const chip = (label, urgency, value) => {
     const style = urgencyStyle(urgency);
@@ -94,15 +97,19 @@ export function StatusStrip({ report, vehicle, analyzing, onAnalyze, onStop, onS
           <div className="mb-1 hidden sm:block">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: T.faint }}>Systems</p>
             <p className="mt-1 text-xs font-bold" style={{ color: T.text }}>
-              {report ? `${doneCount} healthy · ${report.components.length - doneCount} need review` : "Waiting for scan"}
+              {!report
+                ? "Waiting for assessment"
+                : report.components.length
+                  ? `${doneCount} rule checks clear · ${report.components.length - doneCount} need review`
+                  : "No supported readings assessed"}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {chip("Done", "good", doneCount)}
-          {chip("Battery", battery?.urgency || "good", battery ? URGENCY[battery.urgency]?.short : null)}
-          {chip(brakes?.urgency === "good" ? "Brakes OK" : "Brakes issue", brakes?.urgency || "good")}
+          {chip("Battery", battery?.urgency || null, battery ? URGENCY[battery.urgency]?.short : "No data")}
+          {chip("Brakes", brakes?.urgency || null, brakes ? URGENCY[brakes.urgency]?.short : "No data")}
           <button type="button" onClick={onShowReport}
             className="rounded-xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] transition-colors hover:bg-slate-50"
             style={{ borderColor: T.border, color: T.text, background: T.card }}>
@@ -112,7 +119,7 @@ export function StatusStrip({ report, vehicle, analyzing, onAnalyze, onStop, onS
             className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-white transition-all disabled:cursor-not-allowed disabled:opacity-70"
             style={{ background: `linear-gradient(135deg, ${T.blue}, ${T.cyan})`, boxShadow: "0 10px 22px rgba(37,99,235,0.28)" }}>
             <Icon name="spark" size={14} color="#fff" />
-            {analyzing ? "Analyzing" : "AI Analyzes"}
+            {analyzing ? "Checking" : "Run assessment"}
           </button>
           {analyzing && (
             <button type="button" onClick={onStop}
@@ -139,7 +146,7 @@ export function StatusStrip({ report, vehicle, analyzing, onAnalyze, onStop, onS
 }
 
 export function AIAssistantCard({ user, report, analyzing, onAnalyze, onStop }) {
-  const firstName = user?.name?.trim()?.split(" ")[0] || "Alex";
+  const firstName = user?.name?.trim()?.split(" ")[0] || "there";
   const critical = report?.components?.filter((component) => component.urgency === "critical") || [];
   const warning = report?.components?.filter((component) => component.urgency === "warning") || [];
 
@@ -158,24 +165,24 @@ export function AIAssistantCard({ user, report, analyzing, onAnalyze, onStop }) 
           <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white" style={{ background: T.success }} />
         </div>
         <div>
-          <p className="text-sm font-extrabold" style={{ color: T.text }}>AI Assistant</p>
+          <p className="text-sm font-extrabold" style={{ color: T.text }}>Assessment guide</p>
           <p className="text-[11px] font-medium" style={{ color: analyzing ? T.blue : T.success }}>
-            {analyzing ? "Thinking through your vehicle data..." : report ? "Diagnostic analysis complete" : "Ready to analyze"}
+            {analyzing ? "Checking supplied data..." : report ? "Assessment returned" : "Ready to check supplied data"}
           </p>
         </div>
         <span className="ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em]"
           style={{ background: T.blueSoft, color: T.blue }}>
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.blue }} />
-          Aura
+          Rules
         </span>
       </div>
 
       <div className="relative mt-5 flex-1">
         <p className="text-base font-extrabold" style={{ color: T.text }}>
-          Hi {firstName}! I'm your AI Assistant.
+          Hi {firstName}! I can explain your vehicle assessment.
         </p>
         <p className="mt-2 text-sm leading-6" style={{ color: T.muted }}>
-          The analysis of your car has been successfully completed. I'll help you identify and resolve issues effectively.
+          I can explain supplied readings and screening rules. No result is a substitute for a technician's inspection.
         </p>
 
         {report?.top_alert && (
@@ -207,10 +214,12 @@ export function AIAssistantCard({ user, report, analyzing, onAnalyze, onStop }) 
               <Icon name="check" size={14} color={T.blue} />
             </span>
             <div>
-              <p className="text-[11px] font-bold" style={{ color: T.text }}>Aura intelligence online</p>
-              <p className="text-[10px]" style={{ color: T.faint }}>Vehicle context synced just now</p>
+              <p className="text-[11px] font-bold" style={{ color: T.text }}>Assessment source</p>
+              <p className="text-[10px]" style={{ color: T.faint }}>{report?.assessment_method === "threshold_rules" ? "Documented threshold rules" : "No assessment available"}</p>
             </div>
-            <span className="ml-auto text-[10px] font-bold" style={{ color: T.success }}>Live</span>
+            <span className="ml-auto text-[10px] font-bold" style={{ color: T.muted }}>
+              {report?.model_status === "available" ? "Model loaded" : "No trained model"}
+            </span>
           </div>
         </div>
       </div>
@@ -323,9 +332,9 @@ export function ElectronicsCard({ report, vehicle, onSelect, className = "" }) {
             5 modules
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold"
-            style={{ background: "#ECFDF5", color: T.success }}>
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.success }} />
-            {report ? "Live" : "Standby"}
+            style={{ background: T.surface, color: T.muted }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.muted }} />
+            {report ? "Rule screen" : "No readings"}
           </span>
         </div>
       </div>
@@ -383,7 +392,8 @@ export function ElectronicsCard({ report, vehicle, onSelect, className = "" }) {
 }
 
 function BatteryPack({ percent, color }) {
-  const safe = Math.max(0, Math.min(100, percent ?? 0));
+  const hasAssessment = percent != null;
+  const safe = hasAssessment ? Math.max(0, Math.min(100, percent)) : 0;
   return (
     <div className="relative mx-auto w-full max-w-[290px]">
       <svg viewBox="0 0 280 168" className="w-full">
@@ -436,8 +446,8 @@ function BatteryPack({ percent, color }) {
       </svg>
       <div className="absolute left-1/2 top-[36%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-white/85 px-4 py-2 text-center backdrop-blur"
         style={{ borderColor: "#BFDBFE", boxShadow: "0 12px 26px rgba(37,99,235,0.16)" }}>
-        <p className="text-3xl font-black leading-none tracking-tight" style={{ color: T.text }}>{safe}%</p>
-        <p className="text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: color }}>State of charge</p>
+        <p className="text-3xl font-black leading-none tracking-tight" style={{ color: T.text }}>{hasAssessment ? `${safe}%` : "--"}</p>
+        <p className="text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: color }}>{hasAssessment ? "Rule-based health" : "Not assessed"}</p>
       </div>
     </div>
   );
@@ -446,19 +456,24 @@ function BatteryPack({ percent, color }) {
 export function BatteryCard({ report, vehicle, onSelect, className = "" }) {
   const electric = isElectricVehicle(vehicle);
   const battery = componentFor(report, "battery");
-  const percent = battery?.health_score ?? 0;
-  const style = urgencyStyle(battery?.urgency || "good");
-  const condition = battery ? URGENCY[battery.urgency]?.label : "No data";
+  const percent = battery?.health_score ?? null;
+  const style = urgencyStyle(battery?.urgency);
+  const condition = battery ? URGENCY[battery.urgency]?.label : "Not assessed";
+  const packVoltage = measuredValue(vehicle, "pack_voltage");
+  const batteryVoltage = measuredValue(vehicle, "battery_voltage");
+  const batteryAge = measuredValue(vehicle, "battery_age_months");
+  const range = measuredValue(vehicle, "range_km");
+  const connectivity = measuredValue(vehicle, "connectivity");
   const stats = electric
     ? [
-        { label: "Pack", value: vehicle?.pack_voltage != null ? `${vehicle.pack_voltage} V` : "--" },
-        { label: "Range", value: vehicle?.range_km != null ? `${formatNumber(vehicle.range_km)} km` : "--" },
-        { label: "Signal", value: vehicle?.connectivity || "4G" },
+        { label: "Pack", value: packVoltage != null ? `${packVoltage} V` : "--" },
+        { label: "Range", value: range != null ? `${formatNumber(range)} km` : "--" },
+        { label: "Signal", value: connectivity || "--" },
       ]
     : [
-        { label: "12V", value: vehicle?.battery_voltage != null ? `${Number(vehicle.battery_voltage).toFixed(1)} V` : "--" },
-        { label: "Age", value: vehicle?.battery_age_months != null ? `${vehicle.battery_age_months} mo` : "--" },
-        { label: "Signal", value: vehicle?.connectivity || "OBD-II" },
+        { label: "12V", value: batteryVoltage != null ? `${Number(batteryVoltage).toFixed(1)} V` : "--" },
+        { label: "Age", value: batteryAge != null ? `${batteryAge} mo` : "--" },
+        { label: "Signal", value: connectivity || "--" },
       ];
 
   return (
@@ -568,14 +583,17 @@ function VoltageGauge({ value, unit, min, max, color }) {
 
 export function VoltageCard({ report, vehicle, onSelect, className = "" }) {
   const electric = isElectricVehicle(vehicle);
-  const isPack = electric || vehicle?.pack_voltage != null;
-  const volts = Number(isPack ? (vehicle?.pack_voltage ?? 360) : (vehicle?.battery_voltage ?? 12.6));
-  const urgency = voltageUrgency(vehicle) || "good";
+  const packVoltage = measuredValue(vehicle, "pack_voltage");
+  const batteryVoltage = measuredValue(vehicle, "battery_voltage");
+  const isPack = electric || packVoltage != null;
+  const rawVoltage = isPack ? packVoltage : batteryVoltage;
+  const volts = rawVoltage == null ? null : Number(rawVoltage);
+  const urgency = voltageUrgency(vehicle);
   const style = urgencyStyle(urgency);
-  const color = isPack ? T.blue : style.color;
+  const color = isPack && volts != null ? T.blue : style.color;
   const min = isPack ? 200 : 10;
   const max = isPack ? 450 : 15;
-  const status = isPack ? "Pack voltage" : urgency === "good" ? "Stable" : urgency === "warning" ? "Low" : "Critical";
+  const status = volts == null ? "Not assessed" : isPack ? "Pack voltage supplied" : `${style.label} voltage screen`;
 
   return (
     <motion.button type="button" onClick={onSelect}
@@ -594,19 +612,27 @@ export function VoltageCard({ report, vehicle, onSelect, className = "" }) {
       </div>
 
       <div className="mt-2">
-        <VoltageGauge value={volts} unit={isPack ? "PACK VOLTS" : "VOLTS"} min={min} max={max} color={color} />
+        {volts == null ? (
+          <div className="flex h-[152px] items-center justify-center text-sm font-semibold" style={{ color: T.faint }}>
+            No voltage reading supplied
+          </div>
+        ) : (
+          <VoltageGauge value={volts} unit={isPack ? "PACK VOLTS" : "VOLTS"} min={min} max={max} color={color} />
+        )}
       </div>
 
       <div className="flex items-center justify-between rounded-xl px-3 py-2.5" style={{ background: T.surface }}>
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: T.faint }}>{status}</p>
           <p className="text-[10px]" style={{ color: T.muted }}>
-            {isPack
-              ? `12V rail ${Number(vehicle?.battery_voltage ?? 12.6).toFixed(1)} V`
-              : report ? "OBD-II sensor reading" : "Nominal 12.2 – 12.8 V"}
+            {isPack && batteryVoltage != null
+              ? `12V reading ${Number(batteryVoltage).toFixed(1)} V`
+              : report?.model_status === "not_trained"
+                ? "No trained ML model is installed"
+                : "Voltage screening is not a battery health test"}
           </p>
         </div>
-        <span className="text-xs font-black" style={{ color }}>{report ? "Live" : "Ready"}</span>
+        <span className="text-xs font-black" style={{ color }}>{urgency || (volts != null ? "supplied" : T.muted)}</span>
       </div>
     </motion.button>
   );
@@ -650,11 +676,12 @@ function MotorCurve({ rpm, color }) {
 
 export function MotorCard({ report, vehicle, onSelect, className = "" }) {
   const electric = isElectricVehicle(vehicle);
-  const unit = componentFor(report, electric ? "motor" : "engine", electric ? "battery" : "transmission", "engine_oil", "engine");
-  const style = urgencyStyle(unit?.urgency || "good");
-  const rpm = Number(vehicle?.motor_rpm ?? Math.round(1200 + (Number(vehicle?.avg_speed_kmh || 45) / 120) * 6000));
+  const unit = componentFor(report, electric ? "motor" : "engine");
+  const style = urgencyStyle(unit?.urgency);
+  const rpmValue = measuredValue(vehicle, "motor_rpm");
+  const rpm = rpmValue == null ? null : Number(rpmValue);
   const health = unit?.health_score;
-  const status = unit ? URGENCY[unit.urgency]?.label : "No data";
+  const status = unit ? URGENCY[unit.urgency]?.label : "Not assessed";
   const title = electric ? "MOTOR" : "ENGINE";
   const subtitle = electric ? "Drive unit" : "Power unit";
 
@@ -677,7 +704,7 @@ export function MotorCard({ report, vehicle, onSelect, className = "" }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: T.faint }}>RPM</p>
           <p className="text-4xl font-black leading-none tracking-tight" style={{ color: T.text }}>
-            {rpm.toLocaleString("en-IN")}
+            {rpm == null ? "--" : rpm.toLocaleString("en-IN")}
           </p>
         </div>
         <div className="text-right">
@@ -689,14 +716,20 @@ export function MotorCard({ report, vehicle, onSelect, className = "" }) {
       </div>
 
       <div className="mt-2">
-        <MotorCurve rpm={rpm} color={style.color} />
+        {rpm == null ? (
+          <div className="flex h-[84px] items-center justify-center text-xs font-semibold" style={{ color: T.faint }}>
+            No RPM reading supplied
+          </div>
+        ) : (
+          <MotorCurve rpm={rpm} color={style.color} />
+        )}
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-2">
         <div className="rounded-xl px-3 py-2" style={{ background: T.surface }}>
           <p className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: T.faint }}>Avg speed</p>
           <p className="text-xs font-black" style={{ color: T.text }}>
-            {vehicle?.avg_speed_kmh != null ? `${Math.round(vehicle.avg_speed_kmh)} km/h` : "--"}
+            {measuredValue(vehicle, "avg_speed_kmh") != null ? `${Math.round(Number(vehicle.avg_speed_kmh))} km/h` : "--"}
           </p>
         </div>
         <div className="rounded-xl px-3 py-2" style={{ background: T.surface }}>
@@ -706,7 +739,7 @@ export function MotorCard({ report, vehicle, onSelect, className = "" }) {
           <p className="text-xs font-black" style={{ color: T.text }}>
             {electric
               ? (vehicle?.range_km != null ? `${formatNumber(vehicle.range_km)} km` : "--")
-              : (vehicle?.engine_runtime_hours != null ? `${Math.round(vehicle.engine_runtime_hours)} hrs` : "--")}
+              : (measuredValue(vehicle, "engine_runtime_hours") != null ? `${Math.round(Number(vehicle.engine_runtime_hours))} hrs` : "--")}
           </p>
         </div>
       </div>
@@ -716,14 +749,14 @@ export function MotorCard({ report, vehicle, onSelect, className = "" }) {
 
 export function PerformanceStats({ vehicle }) {
   const electric = isElectricVehicle(vehicle);
-  const range = vehicle?.range_km != null
-    ? `${formatNumber(vehicle.range_km)} km`
-    : vehicle?.fuel_efficiency_kmpl != null
-      ? `${formatNumber(Math.round(vehicle.fuel_efficiency_kmpl * 42))} km`
-      : "--";
-  const acceleration = vehicle?.acceleration_sec != null ? `${vehicle.acceleration_sec} sec` : "--";
-  const powertrain = vehicle?.drivetrain
-    || (vehicle?.fuel_type ? `${vehicle.fuel_type.charAt(0).toUpperCase()}${vehicle.fuel_type.slice(1)}` : "--");
+  const measuredRange = measuredValue(vehicle, "range_km");
+  const measuredAcceleration = measuredValue(vehicle, "acceleration_sec");
+  const measuredDrivetrain = measuredValue(vehicle, "drivetrain");
+  const range = measuredRange != null ? `${formatNumber(measuredRange)} km` : "--";
+  const acceleration = measuredAcceleration != null ? `${measuredAcceleration} sec` : "--";
+  const powertrain = measuredDrivetrain || (vehicle?.fuel_type
+    ? `${vehicle.fuel_type.charAt(0).toUpperCase()}${vehicle.fuel_type.slice(1)}`
+    : "--");
 
   const stats = [
     { key: "range", label: electric ? "Battery range" : "Estimated range", value: range },
