@@ -1,0 +1,13 @@
+{
+  "name": "drive-transparency-main",
+  "version": "1.0.0",
+  "description": "AI-Powered Vehicle Service Transparency is a full-stack vehicle health and service transparency platform. It helps users enter vehicle details, view health analysis, track service history, and understand possible maintenance risks through an AI/ML-backed API.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

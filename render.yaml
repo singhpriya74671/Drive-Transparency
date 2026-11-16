@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: drive-transparency
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: PYTHONPATH
+        value: .
+      - key: SECRET_KEY
+        generateValue: true
+      # Set this to the deployed Vercel origin(s), e.g.
+      # ["https://drive-transparency.vercel.app"] (add a custom domain too if used).
+      - key: ALLOWED_ORIGINS
+        sync: false

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import { useVehicle } from "../context/VehicleContext";
 import { useAuth } from "../context/AuthContext";
+import { getBrandProfile } from "../utils/serviceCenterBrands";
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
 const BG      = "#1C1C1C";
@@ -182,6 +183,7 @@ function SectionLabel({ children }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Home() {
   const { report, selectedVehicle } = useVehicle();
+  const selectedBrand = getBrandProfile(selectedVehicle)?.label || null;
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -189,7 +191,6 @@ export default function Home() {
   const [newItem,      setNewItem]      = useState("");
   const [auraInput,    setAuraInput]    = useState("");
   const [auraChat,     setAuraChat]     = useState([]);
-  const [carBrand,     setCarBrand]     = useState("");
 
   const addChecklistItem = () => {
     const label = newItem.trim();
@@ -772,38 +773,25 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: "#4CAF7D18" }}>🏢</div>
               <div>
-                <p className="font-bold text-sm" style={{ color: TEXT }}>Authorized Service Centers</p>
-                <p className="text-xs mt-0.5" style={{ color: "#4CAF7D" }}>Official brand-only centers</p>
+                <p className="font-bold text-sm" style={{ color: TEXT }}>Authorized Centers</p>
+                <p className="text-xs mt-0.5" style={{ color: "#4CAF7D" }}>
+                  {selectedBrand ? `${selectedBrand} Official Service` : "Select your vehicle first"}
+                </p>
               </div>
             </div>
             <ul className="space-y-1.5">
-              {["Genuine spare parts", "Manufacturer warranty honored", "Trained technicians", "Higher cost, higher trust"].map(t => (
+              {(selectedBrand
+                ? [`Genuine ${selectedBrand} parts`, "Manufacturer-authorized service", "Warranty support"]
+                : ["Choose your vehicle to find manufacturer-authorized service centers."]).map(t => (
                 <li key={t} className="text-xs flex items-center gap-2" style={{ color: MUTED }}>
-                  <span style={{ color: "#4CAF7D" }}>✓</span> {t}
+                  {selectedBrand && <span style={{ color: "#4CAF7D" }}>✓</span>} {t}
                 </li>
               ))}
             </ul>
-            {/* Brand selector */}
-            <div>
-              <p className="text-xs mb-1.5" style={{ color: MUTED }}>Select your car brand:</p>
-              <select
-                value={carBrand}
-                onChange={e => setCarBrand(e.target.value)}
-                style={{
-                  width: "100%", background: SURFACE, border: `1px solid ${carBrand ? "#4CAF7D" : BORDER}`,
-                  borderRadius: 10, padding: "8px 12px", color: carBrand ? TEXT : MUTED,
-                  fontSize: "0.85rem", outline: "none", fontFamily: "inherit",
-                }}
-              >
-                <option value="">-- Choose brand --</option>
-                {["Maruti Suzuki","Hyundai","Tata","Honda","Toyota","Mahindra","Kia","MG","Renault","Nissan","Volkswagen","Skoda","Ford","Jeep","BMW","Mercedes-Benz","Audi","Volvo","Fiat","Mitsubishi"].map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
-            </div>
             <button
               onClick={() => {
-                const q = carBrand ? `${carBrand} authorized service center` : "authorized car service center";
+                if (!selectedBrand) return;
+                const q = `${selectedBrand} authorized service center`;
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
                     ({ coords }) => window.open(`https://www.google.com/maps/search/${encodeURIComponent(q)}/@${coords.latitude},${coords.longitude},14z`, "_blank"),
@@ -811,10 +799,11 @@ export default function Home() {
                   );
                 } else window.open(`https://www.google.com/maps/search/${encodeURIComponent(q + " near me")}`, "_blank");
               }}
+              disabled={!selectedBrand}
               className="w-full py-2.5 rounded-xl text-sm font-semibold mt-auto"
-              style={{ background: "#4CAF7D", color: "#1C1C1C", opacity: carBrand ? 1 : 0.6 }}
+              style={{ background: "#4CAF7D", color: "#1C1C1C", opacity: selectedBrand ? 1 : 0.6 }}
             >
-              📍 {carBrand ? `Find ${carBrand} Centers` : "Select Brand First"}
+              📍 {selectedBrand ? `Find ${selectedBrand} Authorized Service Centers` : "Select your vehicle first"}
             </button>
           </motion.div>
 
@@ -855,7 +844,7 @@ export default function Home() {
           </motion.div>
 
         </div>
-        <p className="text-xs text-center mt-3" style={{ color: "#555" }}>Opens Google Maps · Your location is never stored on our servers</p>
+        <p className="text-xs text-center mt-3" style={{ color: "#555" }}>Location used only in your browser — never stored on servers</p>
       </section>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}

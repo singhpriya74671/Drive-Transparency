@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useVehicle } from "../context/VehicleContext";
+import { API_BASE_URL } from "../config/apiConfig";
 
-const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const BASE_URL = API_BASE_URL;
 
 const BG      = "#1C1C1C";
 const CARD    = "#272727";

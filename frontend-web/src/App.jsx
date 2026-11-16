@@ -56,7 +56,7 @@ function Navbar() {
   const loc      = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  if (loc.pathname === "/car-mode" || loc.pathname === "/login") return null;
+  if (loc.pathname === "/" || loc.pathname === "/car-mode" || loc.pathname === "/login" || loc.pathname === "/dashboard") return null;
 
   return (
     <nav style={{ background: CARD, borderBottom: "1px solid #3D3D3D" }} className="px-6 py-3 flex items-center justify-between">
@@ -66,9 +66,9 @@ function Navbar() {
       </Link>
 
       <div className="flex items-center gap-5 text-sm">
-        {[
-          { to: "/",        label: "Home" },
-          { to: "/input",   label: "Check Vehicle" },
+          {[
+            { to: "/home",    label: "Home" },
+            { to: "/input",   label: "Check Vehicle" },
           { to: "/dashboard", label: "Dashboard" },
           { to: "/bill-analyzer", label: "Bill Analyzer" },
           { to: "/history", label: "Service History" },
@@ -120,11 +120,12 @@ export default function App() {
             <Navbar />
             <Suspense fallback={<AppFallback />}>
               <Routes>
-                <Route path="/"          element={<Home />} />
+                <Route path="/"          element={<Dashboard />} />
+                <Route path="/home"      element={<Home />} />
                 <Route path="/login"     element={<Login />} />
                 <Route path="/car-mode"  element={<CarMode />} />
                 <Route path="/input"     element={<Protected><VehicleInput /></Protected>} />
-                <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/bill-analyzer" element={<Protected><BillAnalyzer /></Protected>} />
                 <Route path="/history"   element={<Protected><ServiceHistory /></Protected>} />
                 <Route path="*"          element={<Navigate to="/" replace />} />

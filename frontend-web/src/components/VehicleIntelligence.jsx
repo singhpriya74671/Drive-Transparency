@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { T } from "./Dashboard/dashboardUtils";
 
-const BG      = "#1C1C1C";
-const CARD    = "#272727";
-const SURFACE = "#323232";
-const PRIMARY = "#DDD0C8";
-const TEXT    = "#F0EBE5";
-const MUTED   = "#8C8480";
-const BORDER  = "#3D3D3D";
-const SUCCESS = "#4CAF7D";
-const WARNING = "#D4935E";
-const DANGER  = "#CF5C5C";
+const BG      = T.surface;
+const SURFACE = T.surface;
+const PRIMARY = T.blue;
+const TEXT    = T.text;
+const MUTED   = T.muted;
+const BORDER  = T.border;
+const SUCCESS = T.success;
+const WARNING = T.warning;
+const DANGER  = T.danger;
 
 // ─── Contextual AI replies ────────────────────────────────────────────────────
 function getContextualReply(msg, report, selectedVehicle) {
@@ -146,19 +146,18 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl overflow-hidden bg-white"
       style={{
-        background: "linear-gradient(145deg, #232323 0%, #1e1e1e 100%)",
         border: `1px solid ${BORDER}`,
-        boxShadow: "0 0 40px rgba(0,0,0,0.4)",
+        boxShadow: T.shadow,
       }}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="px-6 py-4 flex items-center justify-between"
-        style={{ background: "rgba(255,255,255,0.03)", borderBottom: `1px solid ${BORDER}` }}>
+        style={{ background: T.surface, borderBottom: `1px solid ${BORDER}` }}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base"
-            style={{ background: "rgba(221,208,200,0.12)", border: `1px solid rgba(221,208,200,0.2)` }}>
+            style={{ background: T.blueSoft, border: `1px solid #BFDBFE` }}>
             🧠
           </div>
           <div>
@@ -207,10 +206,8 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
                   transition={{ delay: i * 0.08 }}
                   className="rounded-2xl p-4 flex-shrink-0 w-52 sm:w-auto"
                   style={{
-                    background: `linear-gradient(135deg, ${color}10 0%, rgba(30,30,30,0.8) 100%)`,
+                    background: `linear-gradient(135deg, ${color}0D 0%, #FFFFFF 100%)`,
                     border: `1px solid ${color}35`,
-                    backdropFilter: "blur(12px)",
-                    WebkitBackdropFilter: "blur(12px)",
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -235,7 +232,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
 
                   {/* Progress bar */}
                   <div className="h-1.5 rounded-full overflow-hidden mb-2"
-                    style={{ background: "rgba(255,255,255,0.08)" }}>
+                    style={{ background: "#E2E8F0" }}>
                     <motion.div className="h-full rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${prob}%` }}
@@ -253,7 +250,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
 
                   {/* Cost hint */}
                   {c.estimated_cost_min != null && (
-                    <p className="text-xs mt-1" style={{ color: "#555" }}>
+                    <p className="text-xs mt-1" style={{ color: MUTED }}>
                       Est. ₹{c.estimated_cost_min.toLocaleString("en-IN")}+
                     </p>
                   )}
@@ -263,7 +260,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
           </div>
 
           {isDemo && (
-            <p className="text-xs text-center mt-3" style={{ color: "#555" }}>
+            <p className="text-xs text-center mt-3" style={{ color: T.faint }}>
               Demo data shown · Add your vehicle to see real AI predictions
             </p>
           )}
@@ -294,11 +291,11 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
 
         {/* ── AuraBot ──────────────────────────────────────────────────── */}
         <div className="rounded-2xl overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER}` }}>
+          style={{ background: "#FFFFFF", border: `1px solid ${BORDER}` }}>
 
           {/* Bot header */}
           <div className="px-4 py-3 flex items-center gap-2"
-            style={{ background: "rgba(255,255,255,0.03)", borderBottom: `1px solid ${BORDER}` }}>
+            style={{ background: T.surface, borderBottom: `1px solid ${BORDER}` }}>
             <span className="text-base">🤖</span>
             <div>
               <p className="text-xs font-semibold" style={{ color: TEXT }}>AuraBot</p>
@@ -330,7 +327,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
             <div className="rounded-xl p-3 space-y-3 overflow-y-auto"
               style={{ background: BG, minHeight: 80, maxHeight: 240 }}>
               {auraChat.length === 0 ? (
-                <p className="text-sm italic text-center py-4" style={{ color: "#444" }}>
+                <p className="text-sm italic text-center py-4" style={{ color: T.faint }}>
                   Select a prompt above or type your question below
                 </p>
               ) : (
@@ -341,9 +338,10 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
                     <div className="px-3.5 py-2.5 text-sm max-w-sm"
                       style={{
                         background: m.role === "user"
-                          ? `linear-gradient(135deg, ${PRIMARY}, #c8bdb5)`
-                          : SURFACE,
-                        color:      m.role === "user" ? BG : TEXT,
+                          ? `linear-gradient(135deg, ${PRIMARY}, ${T.cyan})`
+                          : "#FFFFFF",
+                        color:      m.role === "user" ? "#FFFFFF" : TEXT,
+                        border:     m.role === "user" ? "none" : `1px solid ${BORDER}`,
                         borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                         lineHeight: 1.5,
                       }}>
@@ -355,7 +353,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
               {auraLoading && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
                   <div className="px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2"
-                    style={{ background: SURFACE, color: MUTED, borderRadius: "18px 18px 18px 4px" }}>
+                    style={{ background: "#FFFFFF", border: `1px solid ${BORDER}`, color: MUTED, borderRadius: "18px 18px 18px 4px" }}>
                     <span className="inline-flex gap-1">
                       {[0, 1, 2].map(n => (
                         <motion.span key={n} className="w-1.5 h-1.5 rounded-full inline-block"
@@ -375,7 +373,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
             <div className="flex gap-2">
               <input
                 className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
-                style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: TEXT }}
+                style={{ background: "#FFFFFF", border: `1px solid ${BORDER}`, color: TEXT }}
                 placeholder="Ask AuraBot about your vehicle..."
                 value={auraInput}
                 onChange={e => setAuraInput(e.target.value)}
@@ -387,9 +385,10 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
                 className="px-5 py-3 rounded-xl font-semibold text-sm flex-shrink-0 transition-all"
                 style={{
                   background: auraInput.trim()
-                    ? `linear-gradient(135deg, ${PRIMARY}, #c8bdb5)`
+                    ? `linear-gradient(135deg, ${PRIMARY}, ${T.cyan})`
                     : SURFACE,
-                  color: auraInput.trim() ? BG : MUTED,
+                  color: auraInput.trim() ? "#FFFFFF" : MUTED,
+                  boxShadow: auraInput.trim() ? "0 8px 20px rgba(37,99,235,0.22)" : "none",
                 }}>
                 Ask
               </button>

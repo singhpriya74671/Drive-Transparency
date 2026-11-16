@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { API_BASE_URL } from "../config/apiConfig";
 
-const API = `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/auth`;
+const API = `${API_BASE_URL}/api/auth`;
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {

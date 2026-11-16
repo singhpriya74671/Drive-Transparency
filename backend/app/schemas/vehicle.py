@@ -36,11 +36,28 @@ class VehicleInput(BaseModel):
 class VehicleResponse(BaseModel):
     id: int
     owner_name: str
+    phone: Optional[str] = None
     vehicle_model: str
     manufacturer: Optional[str]
     manufacturing_year: int
     mileage_km: float
     fuel_type: str
+    last_service_date: Optional[datetime] = None
+    last_oil_change_date: Optional[datetime] = None
+    battery_age_months: Optional[int] = None
+    brake_condition: Optional[str] = None
+    fuel_efficiency_kmpl: Optional[float] = None
+    has_unusual_noise: Optional[bool] = None
+    has_vibration: Optional[bool] = None
+    has_reduced_mileage: Optional[bool] = None
+    has_braking_issues: Optional[bool] = None
+    additional_symptoms: Optional[str] = None
+    battery_voltage: Optional[float] = None
+    engine_temp_c: Optional[float] = None
+    has_dtc: Optional[bool] = None
+    dtc_codes: Optional[str] = None
+    avg_speed_kmh: Optional[float] = None
+    engine_runtime_hours: Optional[float] = None
     created_at: datetime
 
     class Config:

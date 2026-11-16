@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVehicle } from "../context/VehicleContext";
 import { useAuth } from "../context/AuthContext";
+import { findCatalogEntry, listBrands, listVehicleOptions } from "../data/vehicleCatalog";
 import toast from "react-hot-toast";
 
 const BG      = "#1C1C1C";
@@ -41,11 +42,23 @@ const INITIAL = {
 export default function VehicleInput() {
   const [form, setForm] = useState(INITIAL);
   const [step, setStep] = useState(1);
-  const { createVehicle, analyzeVehicle, analyzeQuick, loading } = useVehicle();
+  const { createVehicle, analyzeVehicle, analyzeQuick, setSelected, loading } = useVehicle();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const vehicleOptions = useMemo(() => listVehicleOptions(), []);
+  const brandOptions = useMemo(() => listBrands(), []);
 
   const set = (field, value) => setForm(p => ({ ...p, [field]: value }));
+
+  const handleVehicleModelChange = (value) => {
+    set("vehicle_model", value);
+    const match = findCatalogEntry(value);
+    if (match) {
+      const brand = brandOptions.find((b) => b.key === match.brandKey)?.name || "";
+      if (brand && !form.manufacturer) set("manufacturer", brand);
+      if (match.electric && form.fuel_type !== "electric") set("fuel_type", "electric");
+    }
+  };
 
   const buildPayload = () => ({
     ...form,
@@ -65,7 +78,9 @@ export default function VehicleInput() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const vehicle = await createVehicle(buildPayload());
+      const payload = buildPayload();
+      const vehicle = await createVehicle(payload);
+      setSelected({ ...payload, ...vehicle });
       const result  = await analyzeVehicle(vehicle.id);
       if (result) navigate("/dashboard");
     } catch {
@@ -74,8 +89,12 @@ export default function VehicleInput() {
   };
 
   const handleQuick = async () => {
-    const result = await analyzeQuick(buildPayload());
-    if (result) navigate("/dashboard");
+    const payload = buildPayload();
+    const result = await analyzeQuick(payload);
+    if (result) {
+      setSelected({ ...payload, id: 0, _unsaved: true });
+      navigate("/dashboard");
+    }
   };
 
   const voltageColor = form.battery_voltage < 11.8 ? "#CF5C5C" : form.battery_voltage < 12.2 ? "#D4935E" : "#4CAF7D";
@@ -136,10 +155,33 @@ export default function VehicleInput() {
                   </Row>
                   <Row>
                     <Field label="Vehicle Model *">
-                      <input className="fi" placeholder="e.g. Swift Dzire, i20" value={form.vehicle_model} onChange={e => set("vehicle_model", e.target.value)} required />
+                      <input
+                        className="fi"
+                        list="vehicle-model-suggestions"
+                        placeholder="e.g. Tesla Model Y, BMW X5"
+                        value={form.vehicle_model}
+                        onChange={e => handleVehicleModelChange(e.target.value)}
+                        required
+                      />
+                      <datalist id="vehicle-model-suggestions">
+                        {vehicleOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.bodyLabel}</option>
+                        ))}
+                      </datalist>
                     </Field>
                     <Field label="Manufacturer">
-                      <input className="fi" placeholder="e.g. Maruti, Hyundai" value={form.manufacturer} onChange={e => set("manufacturer", e.target.value)} />
+                      <input
+                        className="fi"
+                        list="vehicle-brand-suggestions"
+                        placeholder="e.g. Tesla, Hyundai"
+                        value={form.manufacturer}
+                        onChange={e => set("manufacturer", e.target.value)}
+                      />
+                      <datalist id="vehicle-brand-suggestions">
+                        {brandOptions.map((brand) => (
+                          <option key={brand.key} value={brand.name} />
+                        ))}
+                      </datalist>
                     </Field>
                   </Row>
                   <Row>

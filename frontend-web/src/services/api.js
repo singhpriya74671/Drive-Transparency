@@ -1,9 +1,8 @@
 import axios from "axios";
-
-const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+import { API_BASE_URL } from "../config/apiConfig";
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -27,7 +26,7 @@ export const vehicleAPI = {
 };
 
 export const maintenanceAPI = {
-  analyze:      (vehicleId)  => api.get(`/api/maintenance/analyze/${vehicleId}`),
+  analyze:      (vehicleId, config) => api.get(`/api/maintenance/analyze/${vehicleId}`, config),
   analyzeQuick: (data)       => api.post("/api/maintenance/analyze-quick", data),
   getHistory:   (vehicleId)  => api.get(`/api/maintenance/history/${vehicleId}`),
   addRecord:    (data)       => api.post("/api/maintenance/history", data),

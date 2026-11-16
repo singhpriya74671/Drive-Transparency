@@ -1,42 +1,43 @@
 import React from "react";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
+import { T } from "./dashboardUtils";
 
 const STATUS_COLORS = {
-  critical: "#CF5C5C",
-  warning:  "#D4935E",
-  good:     "#4CAF7D",
+  critical: T.danger,
+  warning:  T.warning,
+  good:     T.success,
 };
 
 const STATUS_LABELS = {
-  critical: "Immediate Attention Required",
-  warning:  "Service Recommended Soon",
-  good:     "Good Condition",
+  critical: "Immediate attention",
+  warning:  "Service recommended",
+  good:     "Good condition",
 };
 
 export default function HealthGauge({ score, status }) {
-  const color = STATUS_COLORS[status] || "#4CAF7D";
+  const color = STATUS_COLORS[status] || T.success;
   const label = STATUS_LABELS[status] || "Unknown";
 
   return (
-    <div className="flex flex-col items-center gap-3" style={{ minWidth: 180 }}>
-      <div style={{ width: 160, height: 160 }}>
+    <div className="flex flex-col items-center gap-3" style={{ minWidth: 160 }}>
+      <div style={{ width: 150, height: 150 }}>
         <CircularProgressbar
           value={score}
           text={`${Math.round(score)}`}
           styles={buildStyles({
             pathColor:        color,
-            textColor:        "#F0EBE5",
-            trailColor:       "#323232",
-            backgroundColor:  "#272727",
+            textColor:        T.text,
+            trailColor:       T.surface,
+            backgroundColor:  T.card,
             textSize:         "22px",
             pathTransitionDuration: 1.5,
           })}
         />
       </div>
       <div
-        className="px-4 py-1.5 rounded-full text-xs font-semibold text-center"
-        style={{ background: `${color}18`, color, border: `1px solid ${color}44` }}
+        className="rounded-full px-4 py-1.5 text-center text-[11px] font-bold"
+        style={{ background: `${color}12`, color, border: `1px solid ${color}33` }}
       >
         {label}
       </div>

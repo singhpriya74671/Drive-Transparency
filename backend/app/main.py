@@ -1,6 +1,5 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
 from app.config import settings
 from app.database import engine, Base
 from app.routes import vehicles, maintenance, auth
@@ -13,24 +12,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Origins come from the ALLOWED_ORIGINS environment variable in production.
+# No wildcard is used so only the deployed frontend (and local dev origins by
+# default) can call the API from a browser.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.options("/{rest_of_path:path}")
-async def preflight_handler(rest_of_path: str):
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        },
-    )
 
 app.include_router(auth.router)
 app.include_router(vehicles.router)
