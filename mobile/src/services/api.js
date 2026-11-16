@@ -1,12 +1,15 @@
 import axios from "axios";
 
-// Change this to your server IP when testing on a physical device
-const BASE_URL = "http://10.0.2.2:8000"; // Android emulator → host machine
+// Deployed backend, so the app works on real phones (Expo Go) out of the box.
+// For a local backend on the Android emulator use "http://10.0.2.2:8000";
+// on a physical device use "http://<your-PC-LAN-IP>:8000".
+const BASE_URL = "https://drive-transparency.onrender.com";
 
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 10000,
+  // Render's free tier can take ~50s to wake from sleep on the first request.
+  timeout: 60000,
 });
 
 export const vehicleAPI = {
