@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { vehicleAPI, maintenanceAPI } from "../services/api";
 import { buildVehicleFromInput } from "../data/vehicleCatalog";
-import { buildLocalReport } from "../utils/localVehicleReport";
+import { createDemoReport, createDemoVehicle } from "../data/demoVehicle";
 import toast from "react-hot-toast";
 
 const VehicleContext = createContext(null);
@@ -27,6 +27,16 @@ function persistInput(value) {
   }
 }
 
+function getAnalysisError(err) {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item.msg).filter(Boolean).join("; ") || "The analysis request was invalid.";
+  }
+  if (err?.code === "ERR_NETWORK") return "Cannot reach the maintenance API. Check that the backend is running.";
+  return "The maintenance analysis failed. Please try again.";
+}
+
 export function VehicleProvider({ children }) {
   const [bootstrap] = useState(() => {
     const text = readStoredInput();
@@ -36,9 +46,7 @@ export function VehicleProvider({ children }) {
 
   const [vehicles, setVehicles]        = useState([]);
   const [selectedVehicle, setSelected] = useState(bootstrap.vehicle);
-  const [report, setReport]            = useState(
-    bootstrap.vehicle ? buildLocalReport(bootstrap.vehicle) : null
-  );
+  const [report, setReport]            = useState(null);
   const [manualInput, setManualInput]  = useState(bootstrap.text);
   const [loading, setLoading]          = useState(false);
 
@@ -74,7 +82,8 @@ export function VehicleProvider({ children }) {
       return data;
     } catch (err) {
       const cancelled = err?.code === "ERR_CANCELED" || err?.name === "CanceledError";
-      if (!cancelled) toast.error("Analysis failed. Showing local diagnostics instead.");
+      setReport(null);
+      if (!cancelled) toast.error(getAnalysisError(err));
       throw err;
     } finally {
       setLoading(false);
@@ -87,17 +96,16 @@ export function VehicleProvider({ children }) {
       const { data } = await maintenanceAPI.analyzeQuick(formData);
       setReport(data);
       return data;
-    } catch {
-      const local = buildLocalReport(formData);
-      setReport(local);
-      return local;
+    } catch (err) {
+      setReport(null);
+      toast.error(getAnalysisError(err));
+      throw err;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Manual model entry is the single source of truth: it resolves brand, model,
-  // body type, specs and a fresh diagnostic report immediately.
+  // Manual model entry resolves the vehicle profile without inventing sensor readings.
   const applyVehicleInput = useCallback((text) => {
     const vehicle = buildVehicleFromInput(text);
     if (!vehicle) {
@@ -107,7 +115,7 @@ export function VehicleProvider({ children }) {
     }
     setManualInput(vehicle._input);
     setSelected(vehicle);
-    setReport(buildLocalReport(vehicle));
+    setReport(null);
     persistInput(vehicle._input);
     return vehicle;
   }, []);
@@ -121,7 +129,7 @@ export function VehicleProvider({ children }) {
       return;
     }
     setSelected(vehicle);
-    setReport(buildLocalReport(vehicle));
+    setReport(null);
   }, []);
 
   const clearVehicle = useCallback(() => {
@@ -129,6 +137,13 @@ export function VehicleProvider({ children }) {
     setReport(null);
     setManualInput("");
     persistInput("");
+  }, []);
+
+  const loadDemoVehicle = useCallback(() => {
+    const vehicle = createDemoVehicle();
+    setSelected(vehicle);
+    setReport(createDemoReport());
+    return vehicle;
   }, []);
 
   return (
@@ -140,7 +155,7 @@ export function VehicleProvider({ children }) {
         loading,
         loadVehicles, createVehicle,
         analyzeVehicle, analyzeQuick,
-        applyVehicleInput, selectVehicle, clearVehicle,
+        applyVehicleInput, selectVehicle, clearVehicle, loadDemoVehicle,
       }}
     >
       {children}

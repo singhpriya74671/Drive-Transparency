@@ -12,110 +12,75 @@ const SUCCESS = T.success;
 const WARNING = T.warning;
 const DANGER  = T.danger;
 
-// ─── Contextual AI replies ────────────────────────────────────────────────────
+// ─── Report-grounded replies ──────────────────────────────────────────────────
 function getContextualReply(msg, report, selectedVehicle) {
   const q = msg.toLowerCase();
   const components  = report?.components ?? [];
-  const critical    = components.filter(c => c.urgency === "critical");
-  const warning     = components.filter(c => c.urgency === "warning");
-  const predicted   = components
-    .filter(c => c.maintenance_probability != null)
-    .sort((a, b) => b.maintenance_probability - a.maintenance_probability);
-  const hasFault    = selectedVehicle?.has_dtc && selectedVehicle?.dtc_codes;
-  const score       = Math.round(report?.overall_health_score ?? 0);
-  const bv          = selectedVehicle?.battery_voltage ?? 12.6;
-  const et          = selectedVehicle?.engine_temp_c   ?? 90;
+  const score = report?.overall_health_score == null ? null : Math.round(report.overall_health_score);
+  const battery = components.find(c => c.component === "battery");
+  const engine = components.find(c => c.component === "engine");
+  const brakes = components.find(c => c.component === "brakes");
+  const codes = selectedVehicle?.dtc_codes?.trim();
 
   if (q.includes("next") || q.includes("service") || q.includes("what")) {
-    if (predicted.length > 0) {
-      const top = predicted[0];
-      const days = top.predicted_service_window_days ?? 30;
-      const window = days <= 7 ? "this week" : days <= 30 ? `in ${days} days` : `in ${Math.round(days / 30)} months`;
-      return `Based on AI analysis, your most urgent service is ${top.label || top.component} at ${(top.maintenance_probability ?? 0).toFixed(0)}% risk — expected ${window}.${critical.length > 0 ? ` You also have ${critical.length} critical component(s) needing immediate attention: ${critical.map(c => c.label || c.component).join(", ")}.` : ""}`;
-    }
-    return "Your vehicle is in good condition. Keep up with routine oil changes every 5,000–10,000 km and tyre rotation every 10,000 km.";
+    const actions = (report?.recommendations || []).map(item => item.action).filter(Boolean);
+    if (actions.length) return actions.join(" ");
+    return report?.top_alert || "No assessment is available. Enter observed readings or symptoms and run the backend assessment.";
   }
 
   if (q.includes("health") || q.includes("score") || q.includes("low") || q.includes("why")) {
-    if (score >= 75) return `Your health score of ${score}/100 is Excellent. All major systems are functioning well. Maintain your current service schedule to keep it this way.`;
-    if (score >= 50) return `Your health score of ${score}/100 is Average. ${warning.length} component(s) need attention soon: ${warning.map(c => c.label || c.component).join(", ")}. Schedule a service within the next 1–2 months.`;
-    return `Your health score of ${score}/100 is Critical. Immediate service is recommended. Components needing urgent attention: ${critical.map(c => c.label || c.component).join(", ")}.`;
+    if (score == null) return "There is not enough supported input for a score. The current score covers only components assessed by explicit rules.";
+    return `Rule-based score: ${score}/100 across ${report.assessed_components_count ?? components.length} assessed component(s). It is not a whole-vehicle health score or an ML prediction. ${report.top_alert || ""}`;
   }
 
   if (q.includes("cost") || q.includes("estimate") || q.includes("price") || q.includes("money") || q.includes("₹")) {
-    if (report) {
-      const min = components.reduce((s, c) => s + (c.urgency !== "good" ? c.estimated_cost_min : 0), 0);
-      const max = components.reduce((s, c) => s + (c.urgency !== "good" ? c.estimated_cost_max : 0), 0);
-      if (min > 0) {
-        const breakdown = components.filter(c => c.urgency !== "good")
-          .map(c => `${c.label || c.component}: ₹${c.estimated_cost_min?.toLocaleString("en-IN")}`).join(", ");
-        return `Total estimated maintenance cost: ₹${min.toLocaleString("en-IN")} – ₹${max.toLocaleString("en-IN")}. Breakdown: ${breakdown}. Addressing issues early prevents more expensive repairs later.`;
-      }
-      return "No pending services detected. No immediate costs expected. Your vehicle is in great shape!";
-    }
-    return "Add your vehicle first to get accurate AI cost estimates based on your specific model, mileage, and condition.";
+    return "The project has no verified service-price data, so it does not estimate repair costs. Request a quote from a service center.";
   }
 
   if (q.includes("brake")) {
-    const brake = components.find(c => c.component === "brakes");
-    if (brake) return `Brake status: ${brake.urgency.toUpperCase()}. ${brake.explanation} Estimated cost: ₹${brake.estimated_cost_min?.toLocaleString("en-IN")} – ₹${brake.estimated_cost_max?.toLocaleString("en-IN")}. ${brake.urgency === "critical" ? "Do not delay — faulty brakes are a safety hazard." : "Monitor closely and schedule within 1–2 months."}`;
-    return "Brake pads typically last 40,000–70,000 km. Warning signs: squealing sounds, vibration when braking, or longer stopping distances. Inspect immediately if any of these appear.";
+    return brakes
+      ? `${brakes.explanation} ${brakes.recommended_action || ""}`.trim()
+      : "Brake condition was not assessed. Enter a reported condition or symptom; the app does not infer pad wear.";
   }
 
   if (q.includes("fault") || q.includes("dtc") || q.includes("code") || q.includes("p0")) {
-    if (hasFault) return `Active fault codes detected: ${selectedVehicle.dtc_codes}. These indicate a system fault. Bring your vehicle to a service center for a full OBD scan. Do not ignore active fault codes — they can lead to further engine damage.`;
-    return "No active fault codes detected. Your OBD system is clear. If your check engine light turns on, bring the vehicle in for an OBD scan immediately.";
+    if (codes) return `Reported fault code(s): ${codes}. The code's severity and failed component are not inferred. Have a technician read and diagnose them.`;
+    if (selectedVehicle?.has_dtc === false) return "No active fault codes were reported, but no live OBD scanner is connected.";
+    return "Fault-code status is unknown because no code was entered or scanner connected.";
   }
 
   if (q.includes("battery") || q.includes("voltage")) {
-    const status = bv >= 12.4 ? "Good — healthy charge" : bv >= 11.8 ? "Low — get it tested soon" : "Critical — replace immediately";
-    return `Battery voltage: ${bv.toFixed(1)}V — ${status}. Batteries typically last 2–4 years. If voltage drops below 12.2V at rest, it's time for a replacement. A failing battery can leave you stranded without warning.`;
+    return battery
+      ? `${battery.explanation} ${battery.recommended_action || ""}`.trim()
+      : "No battery-voltage reading was supplied. Battery condition cannot be assessed.";
   }
 
   if (q.includes("engine") || q.includes("temp") || q.includes("heat") || q.includes("overheat")) {
-    const status = et <= 95 ? "Normal range (80–95°C)" : et <= 110 ? "Slightly warm — monitor coolant" : "OVERHEATING — stop and cool down immediately";
-    return `Engine temperature: ${et.toFixed(0)}°C — ${status}. Consistently high temps can indicate low coolant, a faulty thermostat, or a blocked radiator. Have it inspected if temperature stays above 100°C regularly.`;
+    return engine
+      ? `${engine.explanation} ${engine.recommended_action || ""}`.trim()
+      : "No engine-temperature or fault-code evidence was supplied; the engine is not assessed.";
   }
 
   if (q.includes("tyre") || q.includes("tire") || q.includes("wheel") || q.includes("rotation")) {
     const tyre = components.find(c => c.component === "tyres");
-    if (tyre) return `Tyre status: ${tyre.urgency.toUpperCase()}. ${tyre.explanation} Cost estimate: ₹${tyre.estimated_cost_min?.toLocaleString("en-IN")} – ₹${tyre.estimated_cost_max?.toLocaleString("en-IN")}.`;
-    return "Rotate tyres every 10,000 km for even wear. Check pressure monthly — ideal is 30–35 PSI. Worn tyres below 2mm tread depth should be replaced immediately for safety.";
+    return tyre ? tyre.explanation : "No tyre-pressure, tread-depth, or wear readings are available; tyre condition was not assessed.";
   }
 
-  // Fallback contextual
-  if (predicted.length > 0) {
-    const top3 = predicted.slice(0, 3);
-    return `Your vehicle has ${predicted.filter(c => (c.maintenance_probability ?? 0) >= 40).length} component(s) flagged by AI. Top concerns: ${top3.map(c => `${c.label || c.component} (${(c.maintenance_probability ?? 0).toFixed(0)}%)`).join(", ")}. Ask me about specific parts, cost estimates, fault codes, or what to service next.`;
-  }
-  return "Ask me about specific components — brakes, battery, tyres, engine oil — or ask about your health score, cost estimates, fault codes, or what to service next.";
+  if (!report) return "No report is available. Run an assessment with measured inputs first.";
+  return report.top_alert || "No supported readings were assessed.";
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function VehicleIntelligence({ report, selectedVehicle }) {
   const [auraInput,  setAuraInput]  = useState("");
   const [auraChat,   setAuraChat]   = useState([]);
-  const [auraLoading, setAuraLoading] = useState(false);
   const chatEndRef = useRef(null);
 
-  const predicted = (report?.components ?? [])
-    .filter(c => c.maintenance_probability != null)
-    .sort((a, b) => b.maintenance_probability - a.maintenance_probability);
-
-  const hasIssues = predicted.some(c => (c.maintenance_probability ?? 0) >= 40)
-    || (report?.overall_health_score ?? 100) < 70
-    || (selectedVehicle?.has_dtc && selectedVehicle?.dtc_codes);
-
-  const score = Math.round(report?.overall_health_score ?? 0);
-
-  // Show demo cards when no predictions
-  const displayCards = predicted.length > 0 ? predicted : [
-    { label: "Brake Service",    maintenance_probability: 87, predicted_service_window_days: 30,  urgency: "critical" },
-    { label: "Tyre Replacement", maintenance_probability: 91, predicted_service_window_days: 45,  urgency: "critical" },
-    { label: "Battery Check",    maintenance_probability: 74, predicted_service_window_days: 90,  urgency: "warning"  },
-  ];
-
-  const isDemo = predicted.length === 0;
+  const components = report?.components ?? [];
+  const displayCards = components.filter(c => c.risk_score != null);
+  const hasIssues = components.some(c => c.urgency === "critical" || c.urgency === "warning")
+    || Boolean(selectedVehicle?.has_dtc && selectedVehicle?.dtc_codes);
+  const score = report?.overall_health_score == null ? null : Math.round(report.overall_health_score);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,17 +91,12 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
     if (!q) return;
     setAuraChat(p => [...p, { role: "user", text: q }]);
     setAuraInput("");
-    setAuraLoading(true);
-    setTimeout(() => {
-      setAuraChat(p => [...p, { role: "bot", text: getContextualReply(q, report, selectedVehicle) }]);
-      setAuraLoading(false);
-    }, 700);
+    setAuraChat(p => [...p, { role: "bot", text: getContextualReply(q, report, selectedVehicle) }]);
   };
 
   const CHIPS = [
     "What should I service next?",
-    score < 75 ? "Why is my health score low?" : "How can I improve my score?",
-    "Estimate maintenance cost",
+    score == null ? "What does this assessment mean?" : "Why is my health score low?",
     "Check brake condition",
     selectedVehicle?.has_dtc ? "Explain my fault codes" : "What do fault codes mean?",
   ];
@@ -162,7 +122,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
           </div>
           <div>
             <p className="font-bold text-sm" style={{ color: TEXT }}>Vehicle Intelligence</p>
-            <p className="text-xs" style={{ color: MUTED }}>AI Predictive Maintenance + Assistant</p>
+            <p className="text-xs" style={{ color: MUTED }}>Rule-based screening and report explanation</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -172,10 +132,6 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
               ⚠ Attention Required
             </span>
           )}
-          {isDemo && (
-            <span className="text-xs px-2.5 py-1 rounded-full"
-              style={{ background: SURFACE, color: MUTED }}>Demo</span>
-          )}
         </div>
       </div>
 
@@ -184,19 +140,17 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
         {/* ── Predictive Maintenance Cards ─────────────────────────────── */}
         <div>
           <p className="text-xs uppercase tracking-widest mb-3" style={{ color: MUTED }}>
-            AI Predictive Maintenance
+            Rule-based component screening
           </p>
 
           {/* Horizontal scroll on mobile, grid on desktop */}
           <div className="flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible"
             style={{ scrollbarWidth: "none" }}>
             {displayCards.map((c, i) => {
-              const prob  = c.maintenance_probability ?? 0;
-              const days  = c.predicted_service_window_days ?? 180;
-              const color = prob >= 70 ? DANGER : prob >= 40 ? WARNING : SUCCESS;
+              const risk = c.risk_score;
+              const color = c.urgency === "critical" ? DANGER : c.urgency === "warning" ? WARNING : SUCCESS;
               const label = c.label || c.component || "Service";
-              const window = days <= 7 ? "This week" : days <= 30 ? `${days} days` : `${Math.round(days / 30)} months`;
-              const urgencyLabel = prob >= 70 ? "High Risk" : prob >= 40 ? "Monitor" : "Good";
+              const urgencyLabel = c.urgency || "Assessed";
 
               return (
                 <motion.div
@@ -225,43 +179,23 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
                   {/* Name */}
                   <p className="font-bold text-sm mb-2 leading-tight" style={{ color: TEXT }}>{label}</p>
 
-                  {/* Big % */}
-                  <p className="text-3xl font-black leading-none mb-2" style={{ color }}>
-                    {prob.toFixed(0)}<span className="text-base font-semibold">%</span>
+                  <p className="text-xs leading-relaxed mb-2" style={{ color: MUTED }}>
+                    {c.explanation || "Screened using an explicit threshold rule."}
                   </p>
 
-                  {/* Progress bar */}
-                  <div className="h-1.5 rounded-full overflow-hidden mb-2"
-                    style={{ background: "#E2E8F0" }}>
-                    <motion.div className="h-full rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${prob}%` }}
-                      transition={{ duration: 0.9, delay: i * 0.1, ease: "easeOut" }}
-                      style={{
-                        background: `linear-gradient(90deg, ${color}80, ${color})`,
-                        boxShadow: `0 0 6px ${color}80`,
-                      }} />
-                  </div>
-
-                  {/* Timeline */}
                   <p className="text-xs" style={{ color: MUTED }}>
-                    Expected: <span style={{ color, fontWeight: 600 }}>{window}</span>
+                    Rule risk score: <span style={{ color, fontWeight: 600 }}>{risk}/100</span>
                   </p>
 
-                  {/* Cost hint */}
-                  {c.estimated_cost_min != null && (
-                    <p className="text-xs mt-1" style={{ color: MUTED }}>
-                      Est. ₹{c.estimated_cost_min.toLocaleString("en-IN")}+
-                    </p>
-                  )}
+                  {c.recommended_action && <p className="text-xs mt-2" style={{ color: TEXT }}>{c.recommended_action}</p>}
                 </motion.div>
               );
             })}
           </div>
 
-          {isDemo && (
+          {displayCards.length === 0 && (
             <p className="text-xs text-center mt-3" style={{ color: T.faint }}>
-              Demo data shown · Add your vehicle to see real AI predictions
+              No assessable readings yet. Run diagnostics with measured data to see rule-based results. The ML model is not trained.
             </p>
           )}
         </div>
@@ -282,7 +216,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
                   Your vehicle may require attention
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: MUTED }}>
-                  Ask AuraBot below for detailed explanations, cost estimates, and recommendations.
+                  Ask below for an explanation of the available assessment and recommendations.
                 </p>
               </div>
             </motion.div>
@@ -296,14 +230,14 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
           {/* Bot header */}
           <div className="px-4 py-3 flex items-center gap-2"
             style={{ background: T.surface, borderBottom: `1px solid ${BORDER}` }}>
-            <span className="text-base">🤖</span>
+            <span className="text-base">ℹ️</span>
             <div>
-              <p className="text-xs font-semibold" style={{ color: TEXT }}>AuraBot</p>
-              <p className="text-xs" style={{ color: MUTED }}>Context-aware vehicle assistant</p>
+              <p className="text-xs font-semibold" style={{ color: TEXT }}>Report explainer</p>
+              <p className="text-xs" style={{ color: MUTED }}>Answers use this report and its supplied readings</p>
             </div>
             <span className="ml-auto text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
               style={{ background: `${SUCCESS}15`, color: SUCCESS }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: SUCCESS }}></span>Online
+              Rule based
             </span>
           </div>
 
@@ -350,22 +284,6 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
                   </motion.div>
                 ))
               )}
-              {auraLoading && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-                  <div className="px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2"
-                    style={{ background: "#FFFFFF", border: `1px solid ${BORDER}`, color: MUTED, borderRadius: "18px 18px 18px 4px" }}>
-                    <span className="inline-flex gap-1">
-                      {[0, 1, 2].map(n => (
-                        <motion.span key={n} className="w-1.5 h-1.5 rounded-full inline-block"
-                          style={{ background: MUTED }}
-                          animate={{ opacity: [0.3, 1, 0.3] }}
-                          transition={{ duration: 1, repeat: Infinity, delay: n * 0.2 }} />
-                      ))}
-                    </span>
-                    Analysing...
-                  </div>
-                </motion.div>
-              )}
               <div ref={chatEndRef} />
             </div>
 
@@ -374,7 +292,7 @@ export default function VehicleIntelligence({ report, selectedVehicle }) {
               <input
                 className="flex-1 rounded-xl px-4 py-3 text-sm outline-none"
                 style={{ background: "#FFFFFF", border: `1px solid ${BORDER}`, color: TEXT }}
-                placeholder="Ask AuraBot about your vehicle..."
+                placeholder="Ask about this assessment..."
                 value={auraInput}
                 onChange={e => setAuraInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && sendAura()}

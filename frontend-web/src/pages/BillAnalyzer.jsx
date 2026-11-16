@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 
-const BG = "#1C1C1C";
-const CARD = "#272727";
-const SURFACE = "#323232";
-const PRIMARY = "#DDD0C8";
-const TEXT = "#F0EBE5";
-const MUTED = "#8C8480";
-const BORDER = "#3D3D3D";
-const SUCCESS = "#4CAF7D";
-const WARNING = "#D4935E";
-const DANGER = "#CF5C5C";
+const BG = "#FFFFFF";
+const CARD = "#FFFFFF";
+const SURFACE = "#F8FAFC";
+const PRIMARY = "#2563EB";
+const TEXT = "#0F172A";
+const MUTED = "#64748B";
+const BORDER = "#E2E8F0";
+const SUCCESS = "#10B981";
+const WARNING = "#F59E0B";
+const DANGER = "#EF4444";
 
 const CATALOG = [
   { keys: ["oil", "engine oil", "lubricant"], label: "Engine Oil Change", range: [1800, 3500] },

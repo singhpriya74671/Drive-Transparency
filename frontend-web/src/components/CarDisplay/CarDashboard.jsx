@@ -1,165 +1,204 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-/**
- * Car Infotainment Display Mode
- * Optimised for 800×480 / 1024×600 car screens.
- * Theme: Dark grey (#1C1C1C / #272727) + warm beige (#DDD0C8).
- */
-
 const URGENCY_COLOR = {
-  critical: "#CF5C5C",
-  warning:  "#D4935E",
-  good:     "#4CAF7D",
+  critical: "#DC2626",
+  warning: "#D97706",
+  good: "#16A34A",
 };
 
 const STATUS_TEXT = {
   critical: "IMMEDIATE ATTENTION REQUIRED",
-  warning:  "SERVICE RECOMMENDED",
-  good:     "VEHICLE IN GOOD CONDITION",
+  warning: "SERVICE RECOMMENDED",
+  good: "VEHICLE IN GOOD CONDITION",
 };
 
-export default function CarDashboard({ report }) {
+function CarModeHeader({ onExit }) {
+  return (
+    <header className="flex min-h-[68px] flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-xl" aria-hidden="true">🚘</span>
+        <div>
+          <p className="text-sm font-extrabold tracking-tight text-slate-900">Drive Transparency</p>
+          <p className="text-[10px] font-medium text-slate-500">Vehicle health display</p>
+        </div>
+        <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700">
+          Car Mode
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        <time className="hidden text-xs font-medium text-slate-500 sm:block">
+          {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+        </time>
+        <button
+          type="button"
+          onClick={onExit}
+          className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Back to diagnostics
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function PageFooter({ status }) {
+  return (
+    <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-500 sm:px-6">
+      <span>Drive Transparency</span>
+      <span>Last updated: {new Date().toLocaleDateString("en-IN")}</span>
+      {status && (
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-bold uppercase tracking-wide text-slate-600">
+          {status}
+        </span>
+      )}
+    </footer>
+  );
+}
+
+export default function CarDashboard({ report, onExit }) {
   if (!report) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "#1C1C1C" }}>
-        <span className="text-6xl">🚗</span>
-        <p className="text-2xl font-bold" style={{ color: "#8C8480" }}>No Vehicle Data Available</p>
-        <p className="text-sm" style={{ color: "#555" }}>Run an analysis from the web app or mobile app first.</p>
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+        <CarModeHeader onExit={onExit} />
+        <main className="flex flex-1 items-center justify-center px-4 py-10">
+          <section className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-3xl" aria-hidden="true">🚘</span>
+            <h1 className="mt-5 text-xl font-extrabold text-slate-900">No assessment to display yet</h1>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Run a vehicle check from Diagnostics, then return to Car Mode to view its summary.
+            </p>
+            <button
+              type="button"
+              onClick={onExit}
+              className="mt-6 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Open Diagnostics
+            </button>
+          </section>
+        </main>
+        <PageFooter />
       </div>
     );
   }
 
-  const { overall_health_score, overall_status, top_alert, components } = report;
-  const alertColor    = URGENCY_COLOR[overall_status] || "#4CAF7D";
-  const criticalItems = components.filter(c => c.urgency === "critical");
-  const warningItems  = components.filter(c => c.urgency === "warning");
+  const { overall_health_score, overall_status, top_alert } = report;
+  const components = report.components || [];
+  const alertColor = URGENCY_COLOR[overall_status] || URGENCY_COLOR.good;
+  const criticalItems = components.filter((component) => component.urgency === "critical");
+  const warningItems = components.filter((component) => component.urgency === "warning");
 
   return (
-    <div className="car-screen w-full min-h-screen flex flex-col" style={{ background: "#1C1C1C", color: "#F0EBE5" }}>
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+      <CarModeHeader onExit={onExit} />
 
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-8 py-4" style={{ background: "#272727", borderBottom: "1px solid #3D3D3D" }}>
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">🚗</span>
-          <span className="text-lg font-bold" style={{ color: "#F0EBE5" }}>Drive Transparency</span>
-          <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{ background: "#DDD0C822", color: "#DDD0C8" }}>LIVE</span>
-        </div>
-        <p className="text-sm" style={{ color: "#8C8480" }}>
-          {new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-        </p>
-      </div>
-
-      {/* Body */}
-      <div className="flex flex-1">
-
-        {/* Left panel — Score */}
-        <div className="flex flex-col items-center justify-center px-10 py-6 gap-5"
-          style={{ minWidth: 280, borderRight: "1px solid #3D3D3D" }}>
-
-          {/* Ring gauge */}
-          <div className="relative" style={{ width: 170, height: 170 }}>
-            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#323232" strokeWidth="3" />
+      <div className="flex flex-1 flex-col lg:flex-row">
+        <section className="flex flex-col items-center justify-center gap-5 border-b border-slate-200 bg-white px-5 py-7 sm:px-8 lg:w-[38%] lg:flex-shrink-0 lg:border-b-0 lg:border-r lg:px-10">
+          <div className="relative h-40 w-40">
+            <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" role="img" aria-label={`Vehicle health ${Math.round(overall_health_score)} out of 100`}>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E2E8F0" strokeWidth="3" />
               <circle
-                cx="18" cy="18" r="15.9"
+                cx="18"
+                cy="18"
+                r="15.9"
                 fill="none"
                 stroke={alertColor}
                 strokeWidth="3"
                 strokeDasharray={`${overall_health_score} ${100 - overall_health_score}`}
                 strokeLinecap="round"
-                style={{ transition: "stroke-dasharray 1.5s ease", filter: `drop-shadow(0 0 6px ${alertColor}88)` }}
+                style={{ transition: "stroke-dasharray 1.5s ease" }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-5xl font-black" style={{ color: "#F0EBE5" }}>{Math.round(overall_health_score)}</span>
-              <span className="text-xs font-medium" style={{ color: "#8C8480" }}>/ 100</span>
+              <span className="text-5xl font-black tracking-tight text-slate-900">{Math.round(overall_health_score)}</span>
+              <span className="text-xs font-medium text-slate-500">/ 100 health</span>
             </div>
           </div>
 
           <motion.p
-            animate={{ opacity: overall_status === "critical" ? [1, 0.4, 1] : 1 }}
+            animate={{ opacity: overall_status === "critical" ? [1, 0.65, 1] : 1 }}
             transition={{ repeat: overall_status === "critical" ? Infinity : 0, duration: 1.2 }}
-            className="text-center font-bold tracking-wide text-sm"
+            className="text-center text-sm font-extrabold tracking-wide"
             style={{ color: alertColor }}
           >
-            {STATUS_TEXT[overall_status]}
+            {STATUS_TEXT[overall_status] || "ASSESSMENT READY"}
           </motion.p>
 
           {top_alert && (
-            <div className="text-center text-xs px-4 py-2 rounded-lg w-full"
-              style={{ background: `${alertColor}15`, color: alertColor, border: `1px solid ${alertColor}33` }}>
+            <div role="status" className="w-full rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-center text-xs leading-5 text-red-700">
               {top_alert}
             </div>
           )}
 
-          <div className="flex gap-5 w-full justify-center">
+          <div className="flex w-full justify-center gap-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
             {[
-              { label: "Critical", color: "#CF5C5C", count: criticalItems.length },
-              { label: "Warning",  color: "#D4935E", count: warningItems.length },
-              { label: "Healthy",  color: "#4CAF7D", count: components.filter(c => c.urgency === "good").length },
-            ].map(s => (
-              <div key={s.label} className="text-center">
-                <p className="text-xl font-black" style={{ color: s.color }}>{s.count}</p>
-                <p className="text-xs" style={{ color: "#8C8480" }}>{s.label}</p>
+              { label: "Critical", color: URGENCY_COLOR.critical, count: criticalItems.length },
+              { label: "Warning", color: URGENCY_COLOR.warning, count: warningItems.length },
+              { label: "Healthy", color: URGENCY_COLOR.good, count: components.filter((component) => component.urgency === "good").length },
+            ].map((item) => (
+              <div key={item.label} className="text-center">
+                <p className="text-xl font-black" style={{ color: item.color }}>{item.count}</p>
+                <p className="text-xs text-slate-500">{item.label}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Right panel — Components */}
-        <div className="flex-1 px-6 py-5 overflow-y-auto">
-          <p className="text-xs uppercase tracking-widest mb-4" style={{ color: "#8C8480" }}>Component Health</p>
-          <div className="grid grid-cols-2 gap-3">
-            {components.slice(0, 6).map(comp => {
-              const color = URGENCY_COLOR[comp.urgency] || "#4CAF7D";
-              return (
-                <div key={comp.component} className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{ background: "#272727", border: `1px solid ${color}33` }}>
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: "#F0EBE5" }}>{comp.label}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-1.5 rounded-full" style={{ background: "#323232" }}>
-                        <div className="h-full rounded-full"
-                          style={{ width: `${comp.health_score}%`, background: color, boxShadow: `0 0 4px ${color}88` }} />
-                      </div>
-                      <span className="text-xs font-mono" style={{ color }}>{Math.round(comp.health_score)}%</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {(criticalItems.length > 0 || warningItems.length > 0) && (
-            <div className="mt-4 p-3 rounded-xl" style={{ background: "#272727", border: "1px solid #3D3D3D" }}>
-              {criticalItems.length > 0 && (
-                <p className="text-sm" style={{ color: "#CF5C5C" }}>
-                  ⚠️ <strong>Immediate:</strong> {criticalItems.map(c => c.label).join(", ")}
-                </p>
-              )}
-              {warningItems.length > 0 && (
-                <p className="text-sm mt-1" style={{ color: "#D4935E" }}>
-                  🔔 <strong>Warning:</strong> {warningItems.map(c => c.label).join(", ")}
-                </p>
-              )}
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:overflow-y-auto lg:px-8">
+          <div className="mx-auto w-full max-w-5xl">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Vehicle health overview</p>
+                <h1 className="mt-1 text-xl font-extrabold tracking-tight text-slate-900">Component health</h1>
+              </div>
+              <span className="text-xs text-slate-500">{components.length} assessed items</span>
             </div>
-          )}
-        </div>
+
+            {components.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {components.slice(0, 6).map((component) => {
+                  const color = URGENCY_COLOR[component.urgency] || URGENCY_COLOR.good;
+                  const healthScore = Number(component.health_score) || 0;
+                  return (
+                    <article key={component.component} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: color }} />
+                        <p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{component.label}</p>
+                        <span className="text-xs font-bold" style={{ color }}>{Math.round(healthScore)}%</span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${healthScore}%`, background: color }} />
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                This assessment does not include component-level results.
+              </p>
+            )}
+
+            {(criticalItems.length > 0 || warningItems.length > 0) && (
+              <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" aria-label="Items needing attention">
+                <h2 className="text-sm font-extrabold text-slate-900">Items needing attention</h2>
+                {criticalItems.length > 0 && (
+                  <p className="mt-2 text-sm leading-6 text-red-700">
+                    <strong>Immediate:</strong> {criticalItems.map((component) => component.label).join(", ")}
+                  </p>
+                )}
+                {warningItems.length > 0 && (
+                  <p className="mt-1 text-sm leading-6 text-amber-700">
+                    <strong>Warning:</strong> {warningItems.map((component) => component.label).join(", ")}
+                  </p>
+                )}
+              </section>
+            )}
+          </div>
+        </main>
       </div>
 
-      {/* Bottom bar */}
-      <div className="flex items-center justify-between px-8 py-3 text-xs"
-        style={{ background: "#272727", borderTop: "1px solid #3D3D3D", color: "#555" }}>
-        <span>Drive Transparency v1.0</span>
-        <span>Last updated: {new Date().toLocaleDateString("en-IN")}</span>
-        <span className="px-3 py-1 rounded-full font-semibold"
-          style={{ background: `${alertColor}15`, color: alertColor, border: `1px solid ${alertColor}33` }}>
-          {overall_status.toUpperCase()}
-        </span>
-      </div>
+      <PageFooter status={overall_status} />
     </div>
   );
 }

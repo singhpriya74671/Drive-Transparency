@@ -1,5 +1,5 @@
 export const T = {
-  bg:       "#F4F7FB",
+  bg:       "#FFFFFF",
   card:     "#FFFFFF",
   surface:  "#F8FAFC",
   border:   "#E6ECF3",
@@ -22,8 +22,10 @@ export const URGENCY = {
   good:     { color: T.success, soft: "#ECFDF5", label: "Good",     short: "Healthy"  },
 };
 
+const UNKNOWN_URGENCY = { color: T.faint, soft: T.surface, label: "Not assessed", short: "No data" };
+
 export function urgencyStyle(urgency) {
-  return URGENCY[urgency] || URGENCY.good;
+  return URGENCY[urgency] || UNKNOWN_URGENCY;
 }
 
 export function componentFor(report, ...keys) {
@@ -36,23 +38,33 @@ export function componentUrgency(report, ...keys) {
 }
 
 export function overallUrgency(report) {
-  if (!report) return null;
+  if (!report || report.overall_status === "unknown") return null;
   if (report.overall_status === "critical" || report.overall_status === "warning") {
     return report.overall_status;
   }
   return "good";
 }
 
+export function measuredValue(vehicle, key) {
+  if (!vehicle || (vehicle._manual && !vehicle._demo)) return null;
+  const value = vehicle[key];
+  return value == null || value === "" ? null : value;
+}
+
 export function temperatureUrgency(vehicle) {
-  const temp = Number(vehicle?.engine_temp_c);
+  const value = measuredValue(vehicle, "engine_temp_c");
+  if (value == null) return null;
+  const temp = Number(value);
   if (!Number.isFinite(temp)) return null;
-  if (temp > 110) return "critical";
+  if (temp > 115) return "critical";
   if (temp > 100) return "warning";
   return "good";
 }
 
 export function voltageUrgency(vehicle) {
-  const volts = Number(vehicle?.battery_voltage);
+  const value = measuredValue(vehicle, "battery_voltage");
+  if (value == null) return null;
+  const volts = Number(value);
   if (!Number.isFinite(volts)) return null;
   if (volts < 11.8) return "critical";
   if (volts < 12.2) return "warning";
@@ -60,37 +72,33 @@ export function voltageUrgency(vehicle) {
 }
 
 export function estimateTyrePressures(report, vehicle) {
-  const tyre = componentFor(report, "tyres");
-  const health = tyre?.health_score ?? 86;
-  const base = health >= 75 ? 32 : health >= 50 ? 30 : 27;
-  const front = vehicle?.front_tyre_psi ?? base;
-  const rear = vehicle?.rear_tyre_psi ?? base + 1;
   return [
-    { position: "Front left", psi: front },
-    { position: "Front right", psi: front },
-    { position: "Rear left", psi: rear },
-    { position: "Rear right", psi: rear },
-  ];
+    ["Front left", "front_left_tyre_psi"],
+    ["Front right", "front_right_tyre_psi"],
+    ["Rear left", "rear_left_tyre_psi"],
+    ["Rear right", "rear_right_tyre_psi"],
+  ].flatMap(([position, key]) => {
+    const psi = measuredValue(vehicle, key);
+    return psi == null ? [] : [{ position, psi }];
+  });
 }
 
 export function cabinTemperature(vehicle) {
-  return Number(vehicle?.cabin_temp_c ?? 24);
+  const value = measuredValue(vehicle, "cabin_temp_c");
+  return value == null ? null : Number(value);
 }
 
 export function buildSensorStatuses(report, vehicle) {
   const pressure = componentUrgency(report, "tyres");
-  const climate = temperatureUrgency(vehicle) || overallUrgency(report);
-  const camera = report ? "good" : vehicle ? "warning" : null;
-  const radar = report ? "good" : vehicle ? "warning" : null;
-  const navigation = report ? "good" : vehicle ? "warning" : null;
+  const climate = temperatureUrgency(vehicle);
   const tyres = estimateTyrePressures(report, vehicle);
 
   return [
-    { key: "pressure",   label: "Pressure",   urgency: pressure,   value: `${tyres[0].psi} PSI`, detail: "TPMS · 4 tyres", tyres },
-    { key: "camera",     label: "Camera",     urgency: camera,     value: report ? "Online" : "Standby", detail: "360° vision system" },
-    { key: "climate",    label: "Climate",    urgency: climate,    value: `${cabinTemperature(vehicle)}°C`, detail: "Cabin thermal" },
-    { key: "navigation", label: "Navigation", urgency: navigation, value: report ? "Active" : "GPS", detail: report ? "Route sync online" : "GPS ready" },
-    { key: "radar",      label: "Radar",      urgency: radar,      value: "Active",  detail: "ADAS · collision radar" },
+    { key: "pressure", label: "Pressure", urgency: pressure, value: tyres.length ? `${tyres.length} readings` : "No data", detail: tyres.length ? "User-provided readings" : "No TPMS readings supplied", tyres },
+    { key: "camera", label: "Camera", urgency: null, value: "Not connected", detail: "No camera feed integration" },
+    { key: "climate", label: "Engine temp", urgency: climate, value: measuredValue(vehicle, "engine_temp_c") == null ? "No data" : `${measuredValue(vehicle, "engine_temp_c")}°C`, detail: "User-provided reading" },
+    { key: "navigation", label: "Navigation", urgency: null, value: "Not connected", detail: "No navigation feed integration" },
+    { key: "radar", label: "Radar", urgency: null, value: "Not connected", detail: "No ADAS feed integration" },
   ];
 }
 
@@ -101,49 +109,48 @@ function statusText(urgency) {
   return "No data";
 }
 
-function money(value) {
-  return `₹${Number(value || 0).toLocaleString("en-IN")}`;
-}
-
 export function buildComponentDetail(key, report, vehicle) {
-  const overall = overallUrgency(report) || "good";
-  const score = Math.round(report?.overall_health_score ?? 0);
   const pressures = estimateTyrePressures(report, vehicle);
   const battery = componentFor(report, "battery");
   const brakes = componentFor(report, "brakes");
   const tyres = componentFor(report, "tyres");
   const engine = componentFor(report, "engine", "engine_oil", "motor", "transmission");
-  const climateUrgency = temperatureUrgency(vehicle) || overall;
-  const temp = Number(vehicle?.engine_temp_c ?? 90);
-  const rpm = Number(vehicle?.motor_rpm ?? Math.round(1200 + (Number(vehicle?.avg_speed_kmh || 45) / 120) * 6000));
-  const hasPackVoltage = vehicle?.pack_voltage != null;
-  const packVolts = Number(vehicle?.pack_voltage ?? vehicle?.battery_voltage ?? 12.6);
+  const symptoms = componentFor(report, "reported_symptoms");
+  const climateUrgency = temperatureUrgency(vehicle);
+  const tempValue = measuredValue(vehicle, "engine_temp_c");
+  const temp = tempValue == null ? null : Number(tempValue);
+  const rpmValue = measuredValue(vehicle, "motor_rpm");
+  const rpm = rpmValue == null ? null : Number(rpmValue);
+  const packVoltageValue = measuredValue(vehicle, "pack_voltage");
+  const voltageValue = measuredValue(vehicle, "battery_voltage");
+  const hasPackVoltage = packVoltageValue != null;
+  const packVolts = hasPackVoltage ? packVoltageValue : voltageValue;
   const voltageRange = hasPackVoltage ? "300 – 420 V" : "10.0 – 15.0 V";
-  const voltageHealth = hasPackVoltage ? (battery?.health_score ?? score) : voltageUrgency(vehicle) === "critical" ? 28 : voltageUrgency(vehicle) === "warning" ? 58 : 92;
+  const voltageHealth = battery?.health_score ?? null;
 
   const detail = {
     pressure: {
       title: "Tyre pressure",
       subtitle: "TPMS sensor array",
       icon: "pressure",
-      urgency: tyres?.urgency || overall,
+      urgency: tyres?.urgency || null,
       rows: pressures.map((item) => ({ label: item.position, value: `${item.psi} PSI` })),
-      note: tyres?.explanation || "All tyre pressures are balanced and within the recommended operating range.",
+      note: tyres?.explanation || "No tyre-pressure readings are available.",
       health: tyres?.health_score,
     },
     camera: {
       title: "Camera system",
       subtitle: "Surround vision & driver assist",
       icon: "camera",
-      urgency: overall,
+      urgency: null,
       rows: [
-        { label: "Front camera", value: overall === "good" ? "Online" : "Check required" },
-        { label: "Cabin camera", value: "Online" },
-        { label: "Side cameras", value: "4 / 4 active" },
-        { label: "Vision health", value: `${score}%` },
+        { label: "Front camera", value: "No feed" },
+        { label: "Cabin camera", value: "No feed" },
+        { label: "Side cameras", value: "No feed" },
+        { label: "Vision health", value: "Not assessed" },
       ],
-      note: "The vision system is streaming clean frames to lane assist, parking and collision detection.",
-      health: score,
+      note: "Camera status is not available because no camera feed is integrated.",
+      health: null,
     },
     climate: {
       title: "Climate control",
@@ -151,127 +158,124 @@ export function buildComponentDetail(key, report, vehicle) {
       icon: "climate",
       urgency: climateUrgency,
       rows: [
-        { label: "Cabin temperature", value: `${cabinTemperature(vehicle)}°C` },
-        { label: "Engine temperature", value: `${temp.toFixed(0)}°C` },
-        { label: "HVAC mode", value: "Auto" },
-        { label: "Air quality", value: "Good" },
+        { label: "Cabin temperature", value: cabinTemperature(vehicle) == null ? "Not provided" : `${cabinTemperature(vehicle)}°C` },
+        { label: "Engine temperature", value: temp == null ? "Not provided" : `${temp.toFixed(0)}°C` },
+        { label: "HVAC mode", value: "Not connected" },
+        { label: "Air quality", value: "Not connected" },
       ],
-      note: climateUrgency === "good"
-        ? "Cabin climate and thermal management are operating within the normal range."
-        : "Thermal load is elevated. Monitor coolant levels and schedule a climate system inspection.",
-      health: climateUrgency === "good" ? 94 : 62,
+      note: engine?.explanation || "Only the supplied engine-temperature reading can be screened; cabin climate is not connected.",
+      health: engine?.health_score ?? null,
     },
     navigation: {
       title: "Navigation",
       subtitle: "GPS & route intelligence",
       icon: "navigation",
-      urgency: overall,
+      urgency: null,
       rows: [
-        { label: "GPS signal", value: "Locked" },
-        { label: "Average speed", value: `${Math.round(Number(vehicle?.avg_speed_kmh ?? 46))} km/h` },
-        { label: "Route sync", value: "Active" },
-        { label: "Map data", value: "Up to date" },
+        { label: "GPS signal", value: "Not connected" },
+        { label: "Average speed", value: measuredValue(vehicle, "avg_speed_kmh") == null ? "Not provided" : `${Math.round(Number(measuredValue(vehicle, "avg_speed_kmh")))} km/h` },
+        { label: "Route sync", value: "Not connected" },
+        { label: "Map data", value: "Not connected" },
       ],
-      note: "Navigation, live traffic and route guidance are connected and running normally.",
-      health: 96,
+      note: "Navigation status is not available because no navigation feed is integrated.",
+      health: null,
     },
     radar: {
       title: "Radar & ADAS",
       subtitle: "Collision avoidance sensors",
       icon: "radar",
-      urgency: brakes?.urgency || overall,
+      urgency: brakes?.urgency || null,
       rows: [
-        { label: "Front radar", value: "Scanning" },
-        { label: "Blind spot", value: "Active" },
-        { label: "Cruise assist", value: brakes?.urgency === "critical" ? "Limited" : "Ready" },
-        { label: "Coverage", value: "360°" },
+        { label: "Front radar", value: "Not connected" },
+        { label: "Blind spot", value: "Not connected" },
+        { label: "Cruise assist", value: "Not connected" },
+        { label: "Coverage", value: "Not connected" },
       ],
-      note: brakes?.urgency === "critical"
-        ? "ADAS remains active, but brake system inspection is recommended before relying on adaptive cruise."
-        : "All collision radar and driver assistance modules are operating normally.",
-      health: brakes?.health_score ?? score,
+      note: "ADAS radar status is not available because no radar feed is integrated.",
+      health: null,
     },
     battery: {
       title: "Battery",
       subtitle: "High-voltage pack & 12V rail",
       icon: "battery",
-      urgency: battery?.urgency || overall,
+      urgency: battery?.urgency || voltageUrgency(vehicle) || null,
       rows: [
-        { label: "State of health", value: battery ? `${Math.round(battery.health_score)}%` : `${score}%` },
-        { label: "Pack voltage", value: `${packVolts} V` },
-        { label: "12V rail", value: `${Number(vehicle?.battery_voltage ?? 12.6).toFixed(1)} V` },
-        { label: "Battery age", value: vehicle?.battery_age_months != null ? `${vehicle.battery_age_months} months` : "--" },
+        { label: "Rule-based health", value: battery ? `${Math.round(battery.health_score)}%` : "Not assessed" },
+        { label: "Pack voltage", value: hasPackVoltage ? `${packVolts} V` : "Not provided" },
+        { label: "12V reading", value: voltageValue == null ? "Not provided" : `${Number(voltageValue).toFixed(1)} V` },
+        { label: "Battery age", value: measuredValue(vehicle, "battery_age_months") != null ? `${vehicle.battery_age_months} months` : "Not provided" },
       ],
-      note: battery?.explanation || "Battery cells are balanced with stable voltage and normal thermal behaviour.",
-      health: battery?.health_score ?? score,
-      cost: battery ? `${money(battery.estimated_cost_min)} – ${money(battery.estimated_cost_max)}` : null,
+      note: battery?.explanation || "No battery reading was provided; battery health is not assessed.",
+      health: battery?.health_score ?? null,
+      cost: null,
     },
     voltage: {
       title: "Voltage",
       subtitle: "Electrical system & battery rail",
       icon: "voltage",
-      urgency: voltageUrgency(vehicle) || battery?.urgency || overall,
+      urgency: voltageUrgency(vehicle) || battery?.urgency || null,
       rows: [
-        { label: hasPackVoltage ? "Pack voltage" : "Battery voltage", value: `${packVolts} V` },
+        { label: hasPackVoltage ? "Pack voltage" : "Battery voltage", value: packVolts == null ? "Not provided" : `${packVolts} V` },
         { label: "Nominal range", value: voltageRange },
-        { label: "12V rail", value: `${Number(vehicle?.battery_voltage ?? 12.6).toFixed(1)} V` },
-        { label: "Charging state", value: hasPackVoltage ? "Stable" : voltageUrgency(vehicle) === "good" ? "Normal" : "Check" },
+        { label: "12V reading", value: voltageValue == null ? "Not provided" : `${Number(voltageValue).toFixed(1)} V` },
+        { label: "Charging state", value: voltageUrgency(vehicle) ? "Rule checked" : "Not assessed" },
       ],
-      note: voltageUrgency(vehicle) === "critical"
-        ? "Voltage is below the safe operating threshold. Inspect the battery and charging system before driving."
-        : "Electrical output is stable under the current vehicle load with no significant voltage drop detected.",
+      note: voltageValue == null
+        ? "No voltage reading was provided."
+        : battery?.explanation || "This screening checks only the supplied voltage and does not measure charging performance.",
       health: voltageHealth,
     },
     motor: {
       title: "Motor",
       subtitle: "Drive unit performance",
       icon: "motor",
-      urgency: engine?.urgency || overall,
+      urgency: engine?.urgency || symptoms?.urgency || null,
       rows: [
-        { label: "Motor RPM", value: rpm.toLocaleString("en-IN") },
-        { label: "Motor health", value: engine ? `${Math.round(engine.health_score)}%` : `${score}%` },
-        { label: "Runtime", value: vehicle?.engine_runtime_hours != null ? `${Math.round(vehicle.engine_runtime_hours)} hrs` : "--" },
-        { label: "Average speed", value: `${Math.round(Number(vehicle?.avg_speed_kmh ?? 46))} km/h` },
+        { label: "Motor RPM", value: rpm == null ? "Not provided" : rpm.toLocaleString("en-IN") },
+        { label: "Rule-based health", value: engine ? `${Math.round(engine.health_score)}%` : "Not assessed" },
+        { label: "Runtime", value: measuredValue(vehicle, "engine_runtime_hours") == null ? "Not provided" : `${Math.round(Number(vehicle.engine_runtime_hours))} hrs` },
+        { label: "Average speed", value: measuredValue(vehicle, "avg_speed_kmh") == null ? "Not provided" : `${Math.round(Number(vehicle.avg_speed_kmh))} km/h` },
       ],
-      note: engine?.explanation || "Drive unit is delivering smooth power with stable thermal and RPM behaviour.",
-      health: engine?.health_score ?? score,
+      note: engine?.explanation || symptoms?.explanation || "No engine or motor condition assessment is available.",
+      health: engine?.health_score ?? null,
     },
     brakes: {
       title: "Brake system",
       subtitle: "Safety-critical diagnostics",
       icon: "stop",
-      urgency: brakes?.urgency || overall,
+      urgency: brakes?.urgency || null,
       rows: [
         { label: "Brake health", value: brakes ? `${Math.round(brakes.health_score)}%` : "--" },
-        { label: "Condition", value: vehicle?.brake_condition || "Good" },
-        { label: "Braking issues", value: vehicle?.has_braking_issues ? "Reported" : "None" },
+        { label: "Condition", value: measuredValue(vehicle, "brake_condition") || "Not provided" },
+        { label: "Braking issues", value: measuredValue(vehicle, "has_braking_issues") == null ? "Not reported" : vehicle.has_braking_issues ? "Reported" : "None reported" },
         { label: "Service window", value: brakes?.predicted_service_window_days != null ? `${brakes.predicted_service_window_days} days` : "--" },
       ],
-      note: brakes?.explanation || "Brake pads and discs are within the recommended service range.",
+      note: brakes?.explanation || "No brake-condition or braking-symptom data was provided.",
       health: brakes?.health_score,
-      cost: brakes ? `${money(brakes.estimated_cost_min)} – ${money(brakes.estimated_cost_max)}` : null,
+      cost: null,
     },
     engine: {
       title: "Engine",
       subtitle: "Powertrain diagnostics",
       icon: "motor",
-      urgency: engine?.urgency || overall,
+      urgency: engine?.urgency || null,
       rows: [
-        { label: "Engine health", value: engine ? `${Math.round(engine.health_score)}%` : `${score}%` },
-        { label: "Engine temperature", value: `${temp.toFixed(0)}°C` },
-        { label: "Fault codes", value: vehicle?.has_dtc ? vehicle?.dtc_codes || "Active" : "None" },
-        { label: "Runtime", value: vehicle?.engine_runtime_hours != null ? `${Math.round(vehicle.engine_runtime_hours)} hrs` : "--" },
+        { label: "Rule-based health", value: engine ? `${Math.round(engine.health_score)}%` : "Not assessed" },
+        { label: "Engine temperature", value: temp == null ? "Not provided" : `${temp.toFixed(0)}°C` },
+        { label: "Fault codes", value: vehicle?.has_dtc == null ? "Not checked" : vehicle.has_dtc ? vehicle.dtc_codes || "Active" : "None reported" },
+        { label: "Runtime", value: measuredValue(vehicle, "engine_runtime_hours") == null ? "Not provided" : `${Math.round(Number(vehicle.engine_runtime_hours))} hrs` },
       ],
-      note: engine?.explanation || "Engine operating parameters are within the expected range.",
+      note: engine?.explanation || "No engine temperature or fault-code evidence was provided.",
       health: engine?.health_score,
     },
   };
 
   const selected = detail[key];
   if (!selected) return null;
+  const status = selected.urgency ? statusText(selected.urgency) : "Not assessed";
   return {
     ...selected,
-    status: statusText(selected.urgency),
+    status,
     ...urgencyStyle(selected.urgency),
   };
 }

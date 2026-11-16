@@ -5,24 +5,27 @@ import { VehicleProvider } from "./context/VehicleContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 const Home = lazy(() => import("./pages/Home"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Login = lazy(() => import("./pages/Login"));
 const VehicleInput = lazy(() => import("./pages/VehicleInput"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CarMode = lazy(() => import("./pages/CarMode"));
 const ServiceHistory = lazy(() => import("./pages/ServiceHistory"));
 const BillAnalyzer = lazy(() => import("./pages/BillAnalyzer"));
 const AuraBot = lazy(() => import("./components/AuraBot"));
 
-const BG   = "#1C1C1C";
-const CARD = "#272727";
-const PRI  = "#DDD0C8";
+const BG   = "#FFFFFF";
+const CARD = "#FFFFFF";
+const PRI  = "#2563EB";
+const BORDER = "#E2E8F0";
+const TEXT = "#0F172A";
+const MUTED = "#64748B";
 
 function AppFallback() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-6 py-16" style={{ color: PRI }}>
-      <div className="max-w-sm w-full rounded-2xl p-6 text-center" style={{ background: CARD, border: "1px solid #3D3D3D" }}>
+      <div className="max-w-sm w-full rounded-2xl p-6 text-center" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
         <div className="w-10 h-10 mx-auto rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: PRI, borderTopColor: "transparent" }} />
-        <p className="mt-4 text-sm" style={{ color: "#8C8480" }}>Loading Drive Transparency...</p>
+        <p className="mt-4 text-sm" style={{ color: MUTED }}>Loading Drive Transparency...</p>
       </div>
     </div>
   );
@@ -31,7 +34,7 @@ function AppFallback() {
 function DtLogo({ size = 32 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      {/* Beige background — pops against dark navbar */}
+      {/* Blue mark contrasts with the light navigation bar. */}
       <rect width="32" height="32" rx="9" fill={PRI} />
       {/* Arc */}
       <path d="M6 23 A10 10 0 0 1 26 23" stroke="#1C1C1C" strokeWidth="2.2" strokeLinecap="round" />
@@ -56,43 +59,73 @@ function Navbar() {
   const loc      = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  if (loc.pathname === "/" || loc.pathname === "/car-mode" || loc.pathname === "/login" || loc.pathname === "/dashboard") return null;
+  if (loc.pathname === "/car-mode" || loc.pathname === "/login") return null;
+
+  const goHome = () => {
+    if (loc.pathname === "/") {
+      if (loc.hash) navigate("/", { replace: true });
+    } else {
+      navigate("/");
+    }
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
+
+  const goToDiagnostics = () => {
+    if (loc.pathname === "/diagnostics") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      navigate("/diagnostics");
+    }
+  };
 
   return (
-    <nav style={{ background: CARD, borderBottom: "1px solid #3D3D3D" }} className="px-6 py-3 flex items-center justify-between">
-      <Link to="/" className="flex items-center gap-2.5 font-bold" style={{ color: "#F0EBE5", textDecoration: "none" }}>
+    <nav data-site-navigation="true"
+      style={{ background: CARD, borderBottom: `1px solid ${BORDER}`, position: "sticky", top: 0, zIndex: 50 }}
+      className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <Link
+        to="/"
+        onClick={() => loc.pathname === "/" && window.scrollTo({ top: 0, behavior: "smooth" })}
+        className="flex items-center gap-2.5 font-bold"
+        style={{ color: TEXT, textDecoration: "none" }}
+      >
         <DtLogo size={30} />
         <span style={{ letterSpacing: "0.02em" }}>Drive Transparency</span>
       </Link>
 
-      <div className="flex items-center gap-5 text-sm">
-          {[
-            { to: "/home",    label: "Home" },
-            { to: "/input",   label: "Check Vehicle" },
-          { to: "/dashboard", label: "Dashboard" },
-          { to: "/bill-analyzer", label: "Bill Analyzer" },
-          { to: "/history", label: "Service History" },
-        ].map(({ to, label }) => (
-          <Link
-            key={to}
-            to={to}
-            style={{ color: loc.pathname === to ? PRI : "#8C8480", fontWeight: loc.pathname === to ? 600 : 400 }}
-            className="hover:opacity-80 transition-opacity"
-          >
-            {label}
-          </Link>
-        ))}
-        <Link to="/car-mode" style={{ color: PRI, opacity: 0.8 }} className="hover:opacity-100 transition-opacity font-medium">
+      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm">
+        <button type="button" onClick={goHome}
+          style={{ color: loc.pathname === "/" && !loc.hash ? PRI : MUTED }}
+          className="hover:opacity-80 transition-opacity">
+          Home
+        </button>
+        <button type="button" onClick={goToDiagnostics}
+          style={{ color: loc.pathname === "/diagnostics" ? PRI : MUTED }}
+          className="hover:opacity-80 transition-opacity">
+          Diagnostics
+        </button>
+        <Link to="/input" style={{ color: loc.pathname === "/input" ? PRI : MUTED }}
+          className="hover:opacity-80 transition-opacity">
+          Check Vehicle
+        </Link>
+        <Link to="/bill-analyzer" style={{ color: loc.pathname === "/bill-analyzer" ? PRI : MUTED }}
+          className="hover:opacity-80 transition-opacity">
+          Bill Analyzer
+        </Link>
+        <Link to="/history" style={{ color: loc.pathname === "/history" ? PRI : MUTED }}
+          className="hover:opacity-80 transition-opacity">
+          History
+        </Link>
+        <Link to="/car-mode" style={{ color: PRI }} className="hover:opacity-80 transition-opacity font-medium">
           🚘 Car Mode
         </Link>
 
         {user ? (
-          <div className="flex items-center gap-3 ml-2 pl-4" style={{ borderLeft: "1px solid #3D3D3D" }}>
-            <span className="text-xs" style={{ color: "#8C8480" }}>{user.name}</span>
+          <div className="flex items-center gap-3 ml-2 pl-4" style={{ borderLeft: `1px solid ${BORDER}` }}>
+            <span className="text-xs" style={{ color: MUTED }}>{user.name}</span>
             <button
               onClick={() => { logout(); navigate("/login"); }}
               className="text-xs px-3 py-1.5 rounded-lg"
-              style={{ background: "#323232", color: "#8C8480", border: "1px solid #3D3D3D" }}
+              style={{ background: "#F1F5F9", color: MUTED, border: `1px solid ${BORDER}` }}
             >
               Sign Out
             </button>
@@ -120,13 +153,13 @@ export default function App() {
             <Navbar />
             <Suspense fallback={<AppFallback />}>
               <Routes>
-                <Route path="/"          element={<Dashboard />} />
-                <Route path="/home"      element={<Home />} />
+                <Route path="/"          element={<Home />} />
+                <Route path="/diagnostics" element={<Dashboard embedded />} />
+                <Route path="/home"      element={<Navigate to="/" replace />} />
                 <Route path="/login"     element={<Login />} />
                 <Route path="/car-mode"  element={<CarMode />} />
-                <Route path="/input"     element={<Protected><VehicleInput /></Protected>} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/bill-analyzer" element={<Protected><BillAnalyzer /></Protected>} />
+                <Route path="/input"     element={<VehicleInput />} />
+                <Route path="/bill-analyzer" element={<BillAnalyzer />} />
                 <Route path="/history"   element={<Protected><ServiceHistory /></Protected>} />
                 <Route path="*"          element={<Navigate to="/" replace />} />
               </Routes>
@@ -135,7 +168,7 @@ export default function App() {
             <Toaster
               position="top-right"
               toastOptions={{
-                style: { background: "#272727", color: "#F0EBE5", border: "1px solid #3D3D3D" },
+                style: { background: "#FFFFFF", color: TEXT, border: `1px solid ${BORDER}` },
               }}
             />
           </div>

@@ -1,15 +1,53 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from app.database import get_db
 from app.models.vehicle import Vehicle
 from app.models.service import ServiceRecord
-from app.schemas.service import MaintenanceReport, ComponentHealth, ServiceRecordCreate, ServiceRecordResponse
-from app.ml.predictor import predict_maintenance, compute_overall_health
+from app.schemas.service import (
+    MaintenanceAnalysisInput,
+    MaintenanceReport,
+    ComponentHealth,
+    ServiceRecordCreate,
+    ServiceRecordResponse,
+)
+from app.ml.predictor import ModelArtifactError, predict_maintenance
 
 router = APIRouter(prefix="/api/maintenance", tags=["maintenance"])
+logger = logging.getLogger(__name__)
+
+
+def _analyze(vehicle_id: int, vehicle_data: dict) -> MaintenanceReport:
+    try:
+        assessment = predict_maintenance(vehicle_data)
+    except ModelArtifactError as exc:
+        logger.exception("Maintenance model is unavailable for vehicle_id=%s", vehicle_id)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Maintenance analysis failed for vehicle_id=%s", vehicle_id)
+        raise HTTPException(
+            status_code=500,
+            detail="Maintenance analysis failed. Check backend logs for the cause.",
+        ) from exc
+
+    return MaintenanceReport(
+        vehicle_id=vehicle_id,
+        overall_health_score=assessment["overall_health_score"],
+        overall_status=assessment["overall_status"],
+        top_alert=assessment["top_alert"],
+        components=[ComponentHealth(**component) for component in assessment["components"]],
+        generated_at=datetime.now(timezone.utc),
+        service_required=assessment["service_required"],
+        recommendations=assessment["recommendations"],
+        assessment_method=assessment["assessment_method"],
+        model_status=assessment["model_status"],
+        model_message=assessment["model_message"],
+        model_prediction=assessment["model_prediction"],
+        assessed_components_count=assessment["assessed_components_count"],
+    )
 
 
 @router.get("/analyze/{vehicle_id}", response_model=MaintenanceReport)
@@ -19,6 +57,8 @@ def analyze_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     vehicle_dict = {
+        "vehicle_model": vehicle.vehicle_model,
+        "manufacturer": vehicle.manufacturer,
         "manufacturing_year": vehicle.manufacturing_year,
         "mileage_km": vehicle.mileage_km,
         "battery_age_months": vehicle.battery_age_months,
@@ -30,44 +70,23 @@ def analyze_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
         "has_vibration": vehicle.has_vibration,
         "has_reduced_mileage": vehicle.has_reduced_mileage,
         "has_braking_issues": vehicle.has_braking_issues,
+        "additional_symptoms": vehicle.additional_symptoms,
         # OBD-II fields
         "battery_voltage": vehicle.battery_voltage,
         "engine_temp_c": vehicle.engine_temp_c,
         "has_dtc": vehicle.has_dtc,
+        "dtc_codes": vehicle.dtc_codes,
         "avg_speed_kmh": vehicle.avg_speed_kmh,
         "engine_runtime_hours": vehicle.engine_runtime_hours,
     }
 
-    components_raw = predict_maintenance(vehicle_dict)
-    overall = compute_overall_health(components_raw)
-
-    components = [ComponentHealth(**c) for c in components_raw]
-
-    return MaintenanceReport(
-        vehicle_id=vehicle_id,
-        overall_health_score=overall["overall_health_score"],
-        overall_status=overall["overall_status"],
-        top_alert=overall.get("top_alert"),
-        components=components,
-        generated_at=datetime.utcnow(),
-    )
+    return _analyze(vehicle_id, vehicle_dict)
 
 
 @router.post("/analyze-quick", response_model=MaintenanceReport)
-def analyze_quick(data: dict):
+def analyze_quick(data: MaintenanceAnalysisInput):
     """Analyze without saving — for mobile quick-check."""
-    components_raw = predict_maintenance(data)
-    overall = compute_overall_health(components_raw)
-    components = [ComponentHealth(**c) for c in components_raw]
-
-    return MaintenanceReport(
-        vehicle_id=0,
-        overall_health_score=overall["overall_health_score"],
-        overall_status=overall["overall_status"],
-        top_alert=overall.get("top_alert"),
-        components=components,
-        generated_at=datetime.utcnow(),
-    )
+    return _analyze(0, data.model_dump())
 
 
 @router.get("/history/{vehicle_id}", response_model=List[ServiceRecordResponse])

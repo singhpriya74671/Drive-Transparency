@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { T, URGENCY, urgencyStyle, formatDate } from "./dashboardUtils";
+import { T, urgencyStyle, formatDate } from "./dashboardUtils";
 import HealthGauge from "./HealthGauge";
 import ComponentCard from "./ComponentCard";
 import VehicleIntelligence from "../VehicleIntelligence";
@@ -24,13 +24,15 @@ export default function DetailedReport({ report, selectedVehicle }) {
 
   if (!report) return null;
 
+  const scrollToServiceCenters = () => {
+    document.getElementById("service-centers")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const components = report.components || [];
   const dtcCodes = selectedVehicle?.dtc_codes
     ? selectedVehicle.dtc_codes.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
-
-  const totalCostMin = components.reduce((sum, c) => sum + (c.urgency !== "good" ? c.estimated_cost_min || 0 : 0), 0);
-  const totalCostMax = components.reduce((sum, c) => sum + (c.urgency !== "good" ? c.estimated_cost_max || 0 : 0), 0);
+  const hasFaultReported = selectedVehicle?.has_dtc === true || dtcCodes.length > 0;
 
   const timelineItems = components
     .filter((c) => c.maintenance_probability != null)
@@ -40,18 +42,21 @@ export default function DetailedReport({ report, selectedVehicle }) {
     .filter((c) => c.urgency !== "good")
     .sort((a, b) => (a.urgency === "critical" ? -1 : 1));
 
-  const batteryVoltage = selectedVehicle?.battery_voltage != null ? Number(selectedVehicle.battery_voltage) : null;
-  const engineTemp = selectedVehicle?.engine_temp_c != null ? Number(selectedVehicle.engine_temp_c) : null;
+  const mayShowReadings = !selectedVehicle?._manual || selectedVehicle?._demo;
+  const batteryVoltage = mayShowReadings && selectedVehicle?.battery_voltage != null ? Number(selectedVehicle.battery_voltage) : null;
+  const engineTemp = mayShowReadings && selectedVehicle?.engine_temp_c != null ? Number(selectedVehicle.engine_temp_c) : null;
+  const avgSpeed = mayShowReadings && selectedVehicle?.avg_speed_kmh != null ? Number(selectedVehicle.avg_speed_kmh) : null;
+  const hasReadings = batteryVoltage != null || engineTemp != null || avgSpeed != null || Boolean(dtcCodes.length);
   const bvColor = batteryVoltage == null ? T.faint : batteryVoltage >= 12.4 ? T.success : batteryVoltage >= 11.8 ? T.warning : T.danger;
-  const etColor = engineTemp == null ? T.faint : engineTemp <= 95 ? T.success : engineTemp <= 110 ? T.warning : T.danger;
+  const etColor = engineTemp == null ? T.faint : engineTemp > 115 ? T.danger : engineTemp > 100 ? T.warning : T.success;
   const bvLabel = batteryVoltage == null ? "--" : batteryVoltage >= 12.4 ? "Good" : batteryVoltage >= 11.8 ? "Low" : "Critical";
-  const etLabel = engineTemp == null ? "--" : engineTemp <= 95 ? "Normal" : engineTemp <= 110 ? "Warm" : "Overheat";
+  const etLabel = engineTemp == null ? "--" : engineTemp > 115 ? "Critical" : engineTemp > 100 ? "Monitor" : "Below screening threshold";
 
   return (
     <section id="diagnostic-report" className="scroll-mt-24 space-y-5">
       <SectionTitle
-        eyebrow="Full AI report"
-        title="Detailed diagnostics"
+        eyebrow={report.model_status === "available" ? "Model and rule assessment" : "Rule-based screening"}
+        title="Vehicle assessment"
         right={
           <button type="button" onClick={() => navigate("/history")}
             className="rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors hover:bg-slate-50"
@@ -61,26 +66,47 @@ export default function DetailedReport({ report, selectedVehicle }) {
         }
       />
 
+      <div className="rounded-xl border px-4 py-3"
+        style={{
+          borderColor: report.model_status === "available" ? "#BFDBFE" : "#FDE68A",
+          background: report.model_status === "available" ? "#EFF6FF" : "#FFFBEB",
+        }}>
+        <p className="text-xs font-bold" style={{ color: T.text }}>
+          {report.model_status === "available" ? "Trained maintenance model loaded" : "No trained maintenance model installed"}
+        </p>
+        <p className="mt-1 text-xs leading-5" style={{ color: T.muted }}>
+          {report.model_message || "Model output is shown separately from threshold-based component checks."}
+        </p>
+        {report.model_prediction && (
+          <p className="mt-1 text-xs font-semibold" style={{ color: T.text }}>
+            Model result: {report.model_prediction.service_required ? "service required" : "service not indicated"}
+            {report.model_prediction.probability_service_required != null
+              ? ` · ${Math.round(report.model_prediction.probability_service_required * 100)}% model probability`
+              : ""}
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border bg-white p-5 sm:p-6 xl:col-span-7"
           style={{ borderColor: T.border, boxShadow: T.shadowSm }}>
-          <SectionTitle eyebrow="OBD-II" title="Live vehicle status" />
+          <SectionTitle eyebrow="User-supplied values" title="Sensor readings" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl border p-4" style={{ borderColor: T.border }}>
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: T.faint }}>OBD Status</p>
                 <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                  style={{ background: "#ECFDF5", color: T.success }}>
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.success }} />
-                  Connected
+                  style={{ background: T.surface, color: T.muted }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: T.muted }} />
+                  {selectedVehicle?._demo ? "Demo sample values" : hasReadings ? "Manual readings" : "No live connection"}
                 </span>
               </div>
               <div className="space-y-3">
                 {[
                   { label: "Battery voltage", value: batteryVoltage != null ? `${batteryVoltage.toFixed(1)} V` : "--", color: bvColor, status: bvLabel, pct: batteryVoltage == null ? 0 : ((batteryVoltage - 10) / 5) * 100 },
                   { label: "Engine temp", value: engineTemp != null ? `${engineTemp.toFixed(0)} °C` : "--", color: etColor, status: etLabel, pct: engineTemp == null ? 0 : (engineTemp / 150) * 100 },
-                  { label: "Avg speed", value: selectedVehicle?.avg_speed_kmh != null ? `${Math.round(selectedVehicle.avg_speed_kmh)} km/h` : "--", color: T.blue, status: "Logged", pct: selectedVehicle?.avg_speed_kmh != null ? (selectedVehicle.avg_speed_kmh / 200) * 100 : 0 },
+                  { label: "Avg speed", value: avgSpeed != null ? `${Math.round(avgSpeed)} km/h` : "--", color: T.blue, status: avgSpeed != null ? "Provided" : "Not provided", pct: avgSpeed != null ? (avgSpeed / 200) * 100 : 0 },
                 ].map(({ label, value, color, status, pct }) => (
                   <div key={label}>
                     <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -100,32 +126,41 @@ export default function DetailedReport({ report, selectedVehicle }) {
             <div className="rounded-xl border p-4" style={{ borderColor: T.border }}>
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: T.faint }}>Fault codes</p>
-                {selectedVehicle?.has_dtc && dtcCodes.length > 0 ? (
+                {hasFaultReported ? (
                   <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#FEF2F2", color: T.danger }}>
-                    {dtcCodes.length} active
+                    {dtcCodes.length ? `${dtcCodes.length} reported` : "Active · code not entered"}
                   </span>
+                ) : selectedVehicle?.has_dtc === false ? (
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#ECFDF5", color: T.success }}>None reported</span>
                 ) : (
-                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "#ECFDF5", color: T.success }}>Clear</span>
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: T.surface, color: T.muted }}>Unknown</span>
                 )}
               </div>
-              {selectedVehicle?.has_dtc && dtcCodes.length > 0 ? (
-                <div className="space-y-2">
-                  {dtcCodes.slice(0, 4).map((code, index) => (
+              {hasFaultReported ? (
+                dtcCodes.length ? (
+                  <div className="space-y-2">
+                    {dtcCodes.slice(0, 4).map((code, index) => (
                     <div key={index} className="flex items-center justify-between rounded-lg border px-3 py-2"
                       style={{ borderColor: "#FECACA", background: "#FEF2F2" }}>
                       <div>
                         <p className="font-mono text-xs font-bold" style={{ color: T.danger }}>{code}</p>
                         <p className="text-[10px]" style={{ color: T.muted }}>Diagnostic trouble code</p>
                       </div>
-                      <span className="text-[10px] font-bold" style={{ color: T.danger }}>High</span>
+                      <span className="text-[10px] font-bold" style={{ color: T.warning }}>Reported</span>
                     </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-lg px-3 py-4 text-xs" style={{ background: T.surface, color: T.muted }}>
+                    Active fault code status was reported, but no code was entered.
+                  </p>
+                )
               ) : (
                 <div className="flex h-28 flex-col items-center justify-center gap-1.5 rounded-lg" style={{ background: T.surface }}>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "#DCFCE7", color: T.success }}>✓</span>
-                  <p className="text-xs font-semibold" style={{ color: T.text }}>No fault codes detected</p>
-                  <p className="text-[10px]" style={{ color: T.faint }}>All monitored systems normal</p>
+                  <p className="text-xs font-semibold" style={{ color: T.text }}>
+                    {selectedVehicle?.has_dtc === false ? "No active codes reported" : "Fault codes not checked"}
+                  </p>
+                  <p className="text-[10px]" style={{ color: T.faint }}>No live OBD-II scanner is connected</p>
                 </div>
               )}
             </div>
@@ -135,7 +170,7 @@ export default function DetailedReport({ report, selectedVehicle }) {
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="rounded-2xl border bg-white p-5 sm:p-6 xl:col-span-5"
           style={{ borderColor: T.border, boxShadow: T.shadowSm }}>
-          <SectionTitle eyebrow="AI health score" title="Overall vehicle health" />
+          <SectionTitle eyebrow="Rule-based score" title="Assessed inputs only" />
           <div className="flex flex-col items-center gap-5 sm:flex-row">
             <HealthGauge score={report.overall_health_score} status={report.overall_status} />
             <div className="w-full flex-1 space-y-3">
@@ -178,7 +213,7 @@ export default function DetailedReport({ report, selectedVehicle }) {
               </div>
               {timelineItems.map((item) => {
                 const days = item.predicted_service_window_days ?? 180;
-                const probability = item.maintenance_probability ?? 0;
+                const probability = item.maintenance_probability;
                 const color = probability >= 70 ? T.danger : probability >= 40 ? T.warning : T.success;
                 const due = new Date(Date.now() + days * 86400000);
                 const span = days <= 7 ? "This week" : days <= 30 ? `${days} days` : `${Math.round(days / 30)} months`;
@@ -192,7 +227,7 @@ export default function DetailedReport({ report, selectedVehicle }) {
                       </div>
                       <div className="mt-0.5 flex items-center justify-between">
                         <p className="text-[10px]" style={{ color: T.muted }}>{due.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
-                        <p className="text-[10px] font-semibold" style={{ color: T.muted }}>{probability.toFixed(0)}% risk</p>
+                        <p className="text-[10px] font-semibold" style={{ color: T.muted }}>{probability.toFixed(0)}% model probability</p>
                       </div>
                     </div>
                   </div>
@@ -200,48 +235,46 @@ export default function DetailedReport({ report, selectedVehicle }) {
               })}
             </div>
           ) : (
-            <p className="rounded-xl px-3 py-4 text-xs" style={{ background: T.surface, color: T.muted }}>No maintenance predictions available yet.</p>
+            <div className="rounded-xl p-4" style={{ background: T.surface }}>
+              <p className="text-xs font-bold" style={{ color: T.text }}>
+                No verified maintenance forecast is available, so this report will not invent due dates.
+              </p>
+              <p className="mt-2 text-xs leading-5" style={{ color: T.muted }}>
+                For a safe plan, check the maintenance schedule for this exact vehicle in its owner&apos;s manual or with an authorized service center.
+              </p>
+              <ul className="mt-3 space-y-2 text-xs leading-5" style={{ color: T.muted }}>
+                <li><strong style={{ color: T.text }}>1.</strong> Record completed visits in Service History.</li>
+                <li><strong style={{ color: T.text }}>2.</strong> Set the next date or mileage reminder using the manufacturer&apos;s schedule.</li>
+                <li><strong style={{ color: T.text }}>3.</strong> Follow any critical finding in the action plan above.</li>
+              </ul>
+              <button type="button" onClick={() => navigate("/history")}
+                className="mt-4 rounded-lg border px-3 py-2 text-[11px] font-bold transition-colors hover:bg-white"
+                style={{ borderColor: T.border, color: T.blue, background: T.card }}>
+                Open service history
+              </button>
+            </div>
           )}
         </div>
 
         <div className="rounded-2xl border bg-white p-5 sm:p-6" style={{ borderColor: T.border, boxShadow: T.shadowSm }}>
-          <SectionTitle eyebrow="Budget" title="Estimated upcoming costs"
-            right={<span className="rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: T.surface, color: T.muted }}>Next 6 months</span>} />
-          {totalCostMin > 0 ? (
-            <>
-              <div className="space-y-2">
-                {issueItems.map((item) => {
-                  const color = item.urgency === "critical" ? T.danger : T.warning;
-                  return (
-                    <div key={item.component} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5" style={{ background: T.surface }}>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: color }} />
-                        <span className="truncate text-xs font-semibold" style={{ color: T.text }}>{item.label || item.component}</span>
-                      </div>
-                      <span className="flex-shrink-0 text-xs font-bold" style={{ color: T.text }}>
-                        ₹{(item.estimated_cost_min || 0).toLocaleString("en-IN")} – ₹{(item.estimated_cost_max || 0).toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-3 flex items-center justify-between rounded-xl border px-4 py-3"
-                style={{ borderColor: "#BFDBFE", background: T.blueSoft }}>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: T.blue }}>Total estimate</p>
-                  <p className="text-[10px]" style={{ color: T.muted }}>Next 6 months</p>
-                </div>
-                <p className="text-lg font-black" style={{ color: T.blue }}>
-                  ₹{totalCostMin.toLocaleString("en-IN")} – ₹{totalCostMax.toLocaleString("en-IN")}
-                </p>
-              </div>
-            </>
-          ) : (
-            <div className="rounded-xl px-4 py-8 text-center" style={{ background: T.surface }}>
-              <p className="text-sm font-bold" style={{ color: T.success }}>No upcoming service costs</p>
-              <p className="mt-1 text-xs" style={{ color: T.muted }}>All components are within healthy service windows.</p>
-            </div>
-          )}
+          <SectionTitle eyebrow="Budget" title="Service cost estimate" />
+          <div className="rounded-xl p-4" style={{ background: T.surface }}>
+            <p className="text-xs font-bold" style={{ color: T.text }}>
+              No verified local prices are available, so this report will not guess a repair cost.
+            </p>
+            <p className="mt-2 text-xs leading-5" style={{ color: T.muted }}>
+              Get an accurate figure directly from a workshop:
+            </p>
+            <ul className="mt-3 space-y-2 text-xs leading-5" style={{ color: T.muted }}>
+              <li><strong style={{ color: T.text }}>1.</strong> Request an itemized quote for parts, labor, and taxes.</li>
+              <li><strong style={{ color: T.text }}>2.</strong> Compare quotes and ask what warranty is included.</li>
+            </ul>
+            <button type="button" onClick={scrollToServiceCenters}
+              className="mt-4 rounded-lg px-3 py-2 text-[11px] font-bold text-white transition-colors hover:opacity-90"
+              style={{ background: T.blue }}>
+              Find service centers
+            </button>
+          </div>
         </div>
       </div>
 
@@ -261,9 +294,11 @@ export default function DetailedReport({ report, selectedVehicle }) {
                   <div>
                     <p className="text-xs font-bold" style={{ color: style.color }}>{item.label || item.component}</p>
                     <p className="mt-0.5 text-xs leading-5" style={{ color: T.muted }}>{item.explanation}</p>
-                    <p className="mt-1 text-[11px] font-bold" style={{ color: T.text }}>
-                      ₹{(item.estimated_cost_min || 0).toLocaleString("en-IN")} – ₹{(item.estimated_cost_max || 0).toLocaleString("en-IN")}
-                    </p>
+                    {item.recommended_action && (
+                      <p className="mt-1 text-xs font-semibold leading-5" style={{ color: T.text }}>
+                        {item.recommended_action}
+                      </p>
+                    )}
                   </div>
                 </div>
               );
@@ -285,7 +320,9 @@ export default function DetailedReport({ report, selectedVehicle }) {
         </div>
       </div>
 
-      {issueItems.length > 0 && <NearbyServiceCenters vehicle={selectedVehicle} />}
+      <div id="service-centers" className="scroll-mt-24">
+        <NearbyServiceCenters vehicle={selectedVehicle} />
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
         <p className="text-[11px]" style={{ color: T.faint }}>

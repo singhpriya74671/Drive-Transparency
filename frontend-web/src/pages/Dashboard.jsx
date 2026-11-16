@@ -13,7 +13,7 @@ import {
   findCatalogEntry,
   listVehicleOptions,
 } from "../data/vehicleCatalog";
-import { buildLocalReport } from "../utils/localVehicleReport";
+import { createDemoReport } from "../data/demoVehicle";
 import {
   StatusStrip,
   ElectronicsCard,
@@ -88,15 +88,15 @@ function NavItem({ to, label, icon, active, onClick }) {
   );
 }
 
-function SidebarContent({ onSettings, onLogout }) {
+function SidebarContent({ onSettings, onLogout, onHome, onDiagnostics }) {
   return (
     <>
       <div className="px-3">
         <p className="px-3 text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: T.faint }}>Workspace</p>
         <nav className="mt-3 space-y-1">
-          <NavItem to="/home" label="Home" icon="home" />
-          <NavItem to="/dashboard" label="Diagnostic" icon="dashboard" active />
-          <NavItem to="/history" label="Reports" icon="reports" />
+          <NavItem label="Home" icon="home" onClick={onHome} />
+          <NavItem label="Diagnostics" icon="dashboard" active onClick={onDiagnostics} />
+          <NavItem to="/history" label="History" icon="reports" />
         </nav>
       </div>
 
@@ -116,7 +116,7 @@ function SidebarContent({ onSettings, onLogout }) {
           </span>
           <p className="mt-3 text-xs font-extrabold" style={{ color: T.text }}>AI health assistant</p>
           <p className="mt-1 text-[11px] leading-5" style={{ color: T.muted }}>
-            Ask about faults, costs, or what to service next from the dashboard.
+            Ask about faults, costs, or what to service next from diagnostics.
           </p>
         </div>
       </div>
@@ -124,12 +124,12 @@ function SidebarContent({ onSettings, onLogout }) {
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ embedded = false }) {
   const navigate = useNavigate();
   const {
     vehicles, selectedVehicle, setSelected, setReport,
-    report, loadVehicles, analyzeVehicle,
-    applyVehicleInput, manualInput,
+    report, loadVehicles, analyzeVehicle, analyzeQuick,
+    applyVehicleInput, loadDemoVehicle, manualInput,
   } = useVehicle();
   const { user, logout } = useAuth();
 
@@ -148,6 +148,7 @@ export default function Dashboard() {
 
   const abortRef = useRef(null);
   const reportAnchor = useRef(null);
+  const diagnosticEntry = useRef(null);
 
   const vehicleOptions = useMemo(() => listVehicleOptions(), []);
 
@@ -173,7 +174,6 @@ export default function Dashboard() {
   const activeReport = useMemo(() => {
     if (!selectedVehicle || !report) return null;
     if (report.vehicle_id === selectedVehicle.id) return report;
-    if (selectedVehicle._unsaved && report._local) return report;
     return null;
   }, [selectedVehicle, report]);
 
@@ -203,9 +203,8 @@ export default function Dashboard() {
   const scoreColor = score == null ? T.faint : score >= 70 ? T.success : score >= 40 ? T.warning : T.danger;
 
   const selectVehicle = (vehicle) => {
-    if (vehicle.id !== selectedVehicle?.id) setReport(null);
+    setReport(null);
     setSelected(vehicle);
-    setReport(buildLocalReport(vehicle));
     setVehicleOpen(false);
     setSearchOpen(false);
     setSearch("");
@@ -228,8 +227,45 @@ export default function Dashboard() {
   const handleAnalyze = async () => {
     const vehicle = selectedVehicle;
     if (!vehicle) return;
+    if (vehicle._demo) {
+      setReport(createDemoReport());
+      return;
+    }
     if (vehicle._unsaved || vehicle.id === 0) {
-      setReport(buildLocalReport(vehicle));
+      const payload = {
+        vehicle_model: vehicle.vehicle_model,
+        manufacturer: vehicle.manufacturer,
+        fuel_type: vehicle.fuel_type,
+      };
+      if (!vehicle._manual) {
+        Object.assign(payload, {
+          manufacturing_year: vehicle.manufacturing_year,
+          mileage_km: vehicle.mileage_km,
+          battery_age_months: vehicle.battery_age_months,
+          brake_condition: vehicle.brake_condition,
+          fuel_efficiency_kmpl: vehicle.fuel_efficiency_kmpl,
+          has_unusual_noise: vehicle.has_unusual_noise,
+          has_vibration: vehicle.has_vibration,
+          has_reduced_mileage: vehicle.has_reduced_mileage,
+          has_braking_issues: vehicle.has_braking_issues,
+          additional_symptoms: vehicle.additional_symptoms,
+          battery_voltage: vehicle.battery_voltage,
+          engine_temp_c: vehicle.engine_temp_c,
+          has_dtc: vehicle.has_dtc,
+          dtc_codes: vehicle.dtc_codes,
+          avg_speed_kmh: vehicle.avg_speed_kmh,
+          engine_runtime_hours: vehicle.engine_runtime_hours,
+        });
+      }
+      setAnalyzing(true);
+      try {
+        const next = await analyzeQuick(payload);
+        if (next) setReport(next);
+      } catch {
+        // The vehicle context reports the API error; no local prediction is substituted.
+      } finally {
+        setAnalyzing(false);
+      }
       return;
     }
     abortRef.current?.abort();
@@ -240,7 +276,7 @@ export default function Dashboard() {
       const next = await analyzeVehicle(vehicle.id, { signal: controller.signal });
       if (next && !controller.signal.aborted) setReport(next);
     } catch {
-      if (!controller.signal.aborted) setReport(buildLocalReport(vehicle));
+      // The vehicle context reports the API error; no local prediction is substituted.
     } finally {
       if (abortRef.current === controller) {
         abortRef.current = null;
@@ -260,9 +296,22 @@ export default function Dashboard() {
     navigate("/login");
   };
 
+  const scrollToHome = () => window.scrollTo({ top: 0, behavior: "smooth" });
   const scrollToReport = () => {
-    reportAnchor.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const target = reportAnchor.current || diagnosticEntry.current;
+    if (!target) return;
+    const navHeight = document.querySelector("[data-site-navigation]")?.getBoundingClientRect().height || 0;
+    const ownHeaderHeight = embedded ? 0 : 64;
+    const top = window.scrollY + target.getBoundingClientRect().top - navHeight - ownHeaderHeight - 12;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   };
+
+  const handleLoadDemo = () => {
+    loadDemoVehicle();
+    window.setTimeout(scrollToReport, 120);
+  };
+
+  const scrollToDiagnostics = scrollToReport;
 
   const closeMenus = () => {
     setVehicleOpen(false);
@@ -278,17 +327,20 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: T.bg, color: T.text }} onClick={closeMenus}>
-      <header className="sticky top-0 z-40 h-16 border-b bg-white/95 backdrop-blur"
+    <div className={embedded ? "min-h-0" : "min-h-screen"} style={{ background: T.bg, color: T.text }} onClick={closeMenus}>
+      <header className={`${embedded ? "relative" : "sticky top-0"} z-40 h-16 border-b bg-white/95 backdrop-blur`}
         style={{ borderColor: T.border }}>
         <div className="mx-auto flex h-full max-w-[1600px] items-center gap-2 px-3 sm:gap-3 sm:px-5">
 
-          <button type="button" className="flex h-10 w-10 items-center justify-center rounded-xl lg:hidden"
-            style={{ color: T.muted }} onClick={(event) => { event.stopPropagation(); setMobileNav(true); }}>
-            <Icon name="menu" size={20} color={T.muted} />
-          </button>
+          {!embedded && (
+            <button type="button" className="flex h-10 w-10 items-center justify-center rounded-xl lg:hidden"
+              style={{ color: T.muted }} onClick={(event) => { event.stopPropagation(); setMobileNav(true); }}>
+              <Icon name="menu" size={20} color={T.muted} />
+            </button>
+          )}
 
-          <Link to="/" className="hidden flex-shrink-0 items-center gap-2.5 sm:flex" onClick={(event) => event.stopPropagation()}>
+          <Link to="/" className="hidden flex-shrink-0 items-center gap-2.5 sm:flex"
+            onClick={(event) => { event.stopPropagation(); if (embedded) scrollToHome(); }}>
             <Logo size={34} />
             <div className="hidden md:block">
               <p className="text-sm font-extrabold leading-4 tracking-tight" style={{ color: T.text }}>Drive Transparency</p>
@@ -512,10 +564,17 @@ export default function Dashboard() {
       </header>
 
       <div className="mx-auto flex w-full max-w-[1600px]">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 flex-shrink-0 flex-col border-r bg-white py-5 lg:flex"
-          style={{ borderColor: T.border }}>
-          <SidebarContent onSettings={() => setSettingsOpen(true)} onLogout={handleLogout} />
-        </aside>
+        {!embedded && (
+          <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 flex-shrink-0 flex-col border-r bg-white py-5 lg:flex"
+            style={{ borderColor: T.border }}>
+            <SidebarContent
+              onSettings={() => setSettingsOpen(true)}
+              onLogout={handleLogout}
+              onHome={scrollToHome}
+              onDiagnostics={scrollToDiagnostics}
+            />
+          </aside>
+        )}
 
         <main className="min-w-0 flex-1 px-3 py-5 sm:px-5 lg:px-7">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -530,11 +589,11 @@ export default function Dashboard() {
                 )}
               </div>
               <h1 className="mt-1 text-3xl font-black uppercase tracking-[-0.04em] sm:text-4xl" style={{ color: T.text }}>
-                Diagnostic
+                Vehicle Diagnostics
               </h1>
               <p className="mt-1.5 text-xs font-medium" style={{ color: T.muted }}>
                 {selectedVehicle
-                  ? `${vehicleName} · live electronics, battery, motor and AI maintenance guidance.`
+                  ? `${vehicleName} · vehicle profile and available diagnostic guidance.`
                   : "Enter your vehicle model to begin — the logo, 3D model and diagnostics update instantly."}
               </p>
             </div>
@@ -553,7 +612,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <section className="mb-5 rounded-2xl border bg-white p-4 sm:p-5"
+          <section ref={diagnosticEntry}
+            className="scroll-mt-24 mb-5 rounded-2xl border bg-white p-4 sm:p-5"
             style={{ borderColor: T.border, boxShadow: T.shadowSm }}>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0 flex-1">
@@ -577,9 +637,12 @@ export default function Dashboard() {
                   <button type="submit"
                     className="h-11 flex-shrink-0 rounded-xl px-5 text-sm font-bold text-white"
                     style={{ background: T.blue, boxShadow: "0 8px 18px rgba(37,99,235,0.22)" }}>
-                    Analyze
+                    Set vehicle
                   </button>
                 </form>
+                <p className="mt-1 text-[10px]" style={{ color: T.faint }}>
+                  Type any make/model; suggestions are optional. This selects a profile, not sensor data.
+                </p>
               </div>
               <div className="flex-shrink-0 text-[11px] lg:text-right" style={{ color: T.muted }}>
                 {selectedVehicle ? (
@@ -591,9 +654,22 @@ export default function Dashboard() {
                     </p>
                   </>
                 ) : (
-                  <p>Waiting for input</p>
+                  <p>Vehicle not selected</p>
                 )}
+                <button type="button" onClick={() => navigate("/input")}
+                  className="mt-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors hover:bg-blue-50"
+                  style={{ borderColor: "#BFDBFE", color: T.blue, background: "#EFF6FF" }}>
+                  Enter readings &amp; symptoms
+                </button>
+                <button type="button" onClick={handleLoadDemo}
+                  className="mt-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors hover:bg-amber-50"
+                  style={{ borderColor: "#FCD34D", color: "#92400E", background: "#FFFBEB" }}>
+                  Load sample car
+                </button>
               </div>
+              <p className="text-[11px] leading-5 lg:max-w-sm" style={{ color: T.muted }}>
+                Selecting a model loads its visual profile only. No live OBD data is connected; enter observed readings or symptoms to run a health check.
+              </p>
             </div>
           </section>
 
@@ -621,6 +697,12 @@ export default function Dashboard() {
               onStop={handleStop}
               onShowReport={scrollToReport}
             />
+            {effectiveVehicle._demo && (
+              <div role="note" className="rounded-xl border px-4 py-3 text-xs leading-5"
+                style={{ borderColor: "#FCD34D", background: "#FFFBEB", color: "#78350F" }}>
+                <strong>DEMO SAMPLE — NOT REAL VEHICLE DATA.</strong> BMW X1 readings below are illustrative and included only to demonstrate the report. No live OBD connection or trained ML model is being used.
+              </div>
+            )}
 
             <motion.section
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
@@ -634,7 +716,7 @@ export default function Dashboard() {
                       </span>
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.22em]" style={{ color: T.faint }}>
-                          Live vehicle · {vehicleProfile.bodyLabel}{vehicleProfile.electric ? " · EV" : ""}
+                          {effectiveVehicle._demo ? "Demo sample" : effectiveVehicle._manual ? "Manual vehicle profile" : "Saved vehicle profile"} · {vehicleProfile.bodyLabel}{vehicleProfile.electric ? " · EV" : ""}
                         </p>
                         <h2 className="text-lg font-extrabold tracking-tight" style={{ color: T.text }}>{vehicleName}</h2>
                       </div>
@@ -645,7 +727,9 @@ export default function Dashboard() {
                       <span>{formatNumber(effectiveVehicle.mileage_km)} km</span>
                       <span>·</span>
                       <span className="capitalize">{effectiveVehicle.fuel_type || "Petrol"}</span>
-                      {effectiveVehicle._manual && <span className="rounded-full px-2 py-0.5 font-bold" style={{ background: T.blueSoft, color: T.blue }}>Manual entry</span>}
+                      {effectiveVehicle._demo
+                        ? <span className="rounded-full px-2 py-0.5 font-bold" style={{ background: "#FEF3C7", color: "#92400E" }}>Demo sample</span>
+                        : effectiveVehicle._manual && <span className="rounded-full px-2 py-0.5 font-bold" style={{ background: T.blueSoft, color: T.blue }}>Manual entry</span>}
                       {effectiveVehicle._unsaved && !effectiveVehicle._manual && <span className="font-bold" style={{ color: T.warning }}>Unsaved analysis</span>}
                     </div>
                   </div>
@@ -657,7 +741,7 @@ export default function Dashboard() {
                     <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold"
                       style={{ background: T.blueSoft, color: T.blue }}>
                       <span className="h-1.5 w-1.5 rounded-full" style={{ background: analyzing ? T.warning : T.blue }} />
-                      {analyzing ? "Scanning" : "Live"}
+                      {analyzing ? "Scanning" : effectiveVehicle._demo ? "Demo only" : "Manual"}
                     </span>
                     <button type="button" onClick={() => setViewerOpen(true)}
                       className="rounded-lg border px-2.5 py-2 text-[10px] font-bold transition-colors hover:bg-slate-50"
@@ -711,7 +795,7 @@ export default function Dashboard() {
 
             <PerformanceStats vehicle={effectiveVehicle} />
 
-            <div ref={reportAnchor} className="scroll-mt-24">
+            <div id={activeReport ? "diagnostics" : undefined} ref={reportAnchor} className="scroll-mt-24">
               <DetailedReport report={activeReport} selectedVehicle={effectiveVehicle} />
             </div>
 
@@ -790,7 +874,7 @@ export default function Dashboard() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {mobileNav && (
+        {!embedded && mobileNav && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 lg:hidden">
             <button type="button" aria-label="Close navigation"
@@ -813,6 +897,8 @@ export default function Dashboard() {
                 <SidebarContent
                   onSettings={() => { setMobileNav(false); setSettingsOpen(true); }}
                   onLogout={handleLogout}
+                  onHome={scrollToHome}
+                  onDiagnostics={scrollToDiagnostics}
                 />
               </div>
             </motion.aside>
@@ -831,7 +917,7 @@ export default function Dashboard() {
               style={{ borderColor: T.border, boxShadow: T.shadow }}>
               <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: T.border }}>
                 <div>
-                  <p className="text-sm font-extrabold" style={{ color: T.text }}>Dashboard settings</p>
+                  <p className="text-sm font-extrabold" style={{ color: T.text }}>Diagnostics settings</p>
                   <p className="text-[11px]" style={{ color: T.muted }}>Control your diagnostic preferences.</p>
                 </div>
                 <button type="button" onClick={() => setSettingsOpen(false)}

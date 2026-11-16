@@ -1,16 +1,51 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import ConfigDict, Field
+from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime
+
+
+class MaintenanceAnalysisInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    owner_name: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    phone: Optional[str] = Field(default=None, max_length=20)
+    vehicle_model: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    manufacturer: Optional[str] = Field(default=None, max_length=100)
+    manufacturing_year: Optional[int] = Field(default=None, ge=1900, le=2026)
+    mileage_km: Optional[float] = Field(default=None, ge=0, le=2_000_000)
+    fuel_type: Optional[Literal["petrol", "diesel", "electric", "hybrid", "cng"]] = None
+
+    last_service_date: Optional[datetime] = None
+    last_oil_change_date: Optional[datetime] = None
+    battery_age_months: Optional[int] = Field(default=None, ge=0, le=240)
+    brake_condition: Optional[Literal["good", "fair", "poor"]] = None
+    fuel_efficiency_kmpl: Optional[float] = Field(default=None, ge=0, le=100)
+
+    has_unusual_noise: Optional[bool] = None
+    has_vibration: Optional[bool] = None
+    has_reduced_mileage: Optional[bool] = None
+    has_braking_issues: Optional[bool] = None
+    additional_symptoms: Optional[str] = Field(default=None, max_length=2000)
+
+    battery_voltage: Optional[float] = Field(default=None, ge=8, le=16)
+    engine_temp_c: Optional[float] = Field(default=None, ge=0, le=250)
+    has_dtc: Optional[bool] = None
+    dtc_codes: Optional[str] = Field(default=None, max_length=500)
+    avg_speed_kmh: Optional[float] = Field(default=None, ge=0, le=300)
+    engine_runtime_hours: Optional[float] = Field(default=None, ge=0, le=1_000_000)
 
 
 class ComponentHealth(BaseModel):
     component: str
     label: Optional[str] = None
-    health_score: float       # 0-100
-    urgency: str              # critical / warning / good
+    health_score: Optional[float] = None
+    risk_score: Optional[float] = None
+    urgency: str
+    assessment_source: Optional[str] = None
     explanation: str
-    estimated_cost_min: float
-    estimated_cost_max: float
+    recommended_action: Optional[str] = None
+    estimated_cost_min: Optional[float] = None
+    estimated_cost_max: Optional[float] = None
     maintenance_probability: Optional[float] = None
     predicted_service_window_days: Optional[int] = None
     shap_factors: Optional[List[dict]] = None
@@ -18,11 +53,18 @@ class ComponentHealth(BaseModel):
 
 class MaintenanceReport(BaseModel):
     vehicle_id: int
-    overall_health_score: float
-    overall_status: str       # critical / warning / good
+    overall_health_score: Optional[float] = None
+    overall_status: str
     components: List[ComponentHealth]
     top_alert: Optional[str] = None
     generated_at: datetime
+    service_required: Optional[bool] = None
+    recommendations: List[Dict[str, Any]] = Field(default_factory=list)
+    assessment_method: str
+    model_status: Literal["available", "not_trained"]
+    model_message: Optional[str] = None
+    model_prediction: Optional[Dict[str, Any]] = None
+    assessed_components_count: int = 0
 
 
 class ServiceRecordCreate(BaseModel):
